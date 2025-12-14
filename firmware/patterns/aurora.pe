@@ -1,0 +1,42 @@
+// Pattern: Aurora (Northern Lights)
+// Description: Smooth, flowing aurora effect with color transitions
+// Author: [Your Name]
+// Version: 1.0
+
+// User-controllable variables
+export var speed = 0.5
+export var color1 = [0.3, 0.8, 1.0]  // Cyan-blue
+export var color2 = [0.5, 1.0, 0.6]  // Green
+export var color3 = [0.7, 0.3, 1.0]  // Purple
+export var waveCount = 3
+export var waveWidth = 0.3
+
+export function render(index) {
+  var x = index / pixelCount
+  var y = 0  // For 1D strips, y is always 0
+  
+  var t = time * speed
+  
+  // Create multiple wave layers
+  var value = 0
+  for (var i = 0; i < waveCount; i++) {
+    var wavePhase = t * 0.5 + i * 0.3
+    var wave = sin((x + wavePhase) * PI * 2) * 0.5 + 0.5
+    var wavePos = (x + wavePhase * 0.2) % 1
+    var waveShape = exp(-pow((wavePos - 0.5) / waveWidth, 2))
+    value += wave * waveShape / waveCount
+  }
+  
+  // Blend between colors based on position and time
+  var colorMix = (sin(t * 0.3 + x * 2) * 0.5 + 0.5)
+  var color = mix(
+    mix(color1, color2, colorMix),
+    color3,
+    sin(t * 0.2) * 0.5 + 0.5
+  )
+  
+  // Apply brightness variation
+  var brightness = value * 0.8 + 0.2
+  hsv(color[0], color[1], color[2] * brightness)
+}
+

@@ -1,0 +1,17 @@
+{
+  "name": "Default Preset",
+  "description": "Default configuration for LED Hat Small",
+  "pattern": "aurora",
+  "brightness": 128,
+  "speed": 0.5,
+  "variables": {
+    "speed": 0.5,
+    "color1": [0.3, 0.8, 1.0],
+    "color2": [0.5, 1.0, 0.6],
+    "color3": [0.7, 0.3, 1.0],
+    "waveCount": 3,
+    "waveWidth": 0.3
+  },
+  "notes": "Aurora pattern with default settings. Adjust brightness and speed as needed."
+}
+
