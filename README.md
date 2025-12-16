@@ -8,6 +8,7 @@ A wearable LED hat project powered by Pixelblaze, featuring dynamic patterns and
 LED_hat_small/
 ├── README.md              # This file
 ├── docs/                  # Project documentation
+│   ├── prd.md           # Product Requirements Document
 │   ├── overview.md       # Project overview and goals
 │   ├── specifications.md # Technical specifications
 │   └── user-guide.md     # User guide and operation
@@ -57,6 +58,7 @@ LED_hat_small/
 
 ## Documentation
 
+- [Product Requirements Document](docs/prd.md)
 - [Project Overview](docs/overview.md)
 - [Technical Specifications](docs/specifications.md)
 - [User Guide](docs/user-guide.md)
