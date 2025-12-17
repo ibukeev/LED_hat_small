@@ -1,195 +1,187 @@
-# Product Requirements Document
+# PRD — LED Hat Small
+
+Live verision of the PRD is available [here](https://docs.google.com/document/d/1FLzrYwGxkrkdUYWeL5eMNLWcGb3R6WqpmVtx5oFr57E/edit?usp=sharing)
 
 ## Product Overview
 
-### Product Name
-- **Name**: LED Hat Small
-- **Version**: [Version number]
-- **Status**: [Draft/Review/Approved]
-
 ### Product Description
-- **Purpose**: [What the product does]
-- **Target Use Cases**: [Primary use cases]
-- **Key Value Proposition**: [Main benefit to users]
+LED Hat Small is a lightweight, wearable LED hat designed for festivals, night events, and playful self-expression. It prioritizes aesthetics, comfort, safety, and reliability over technical complexity. The product should "just work" with minimal setup and simple controls.
 
 ### Target Audience
-- **Primary Users**: [User type 1]
-- **Secondary Users**: [User type 2]
-- **User Personas**: [Brief persona descriptions]
+- **Primary user**: My girlfriend (non-technical, values comfort and aesthetics)
+- **Secondary user**: Builder/maintainer (Ilya)
 
-## Goals and Objectives
+---
 
-### Primary Goals
-- **Goal 1**: [Description]
-- **Goal 2**: [Description]
-- **Goal 3**: [Description]
+## Goals & Success Criteria
+
+### Primary Goals (Must-have)
+1. **Looks great**
+   - At night: visually striking LED patterns in low-light environments
+   - During the day: it should still look good when light patterns are off
+2. **Comfortable and safe to wear for several hours**
+   - Light enough so that the neck is not getting tired
+   - Ideally no wires connecting to external power source (to avoid wire damage)
+3. **Reliable operation**
+   - No resets, flicker, overheating, or water/dust damage
+4. **Extremely simple user interaction**
+   - No learning curve
 
 ### Success Criteria
-- **Battery Life**: [Target hours] at [brightness]%
-- **User Satisfaction**: [Metric]
-- **Reliability**: [Target uptime/MTBF]
-- **Adoption**: [Target metric]
+- **Battery life**: 3–5 hours minimum of continuous use at capped brightness
+- **Comfort**: wearable for 3+ hours without discomfort or excessive heat
+- **Reliability**: no crashes, brownouts, or visible glitches during normal use
+- **User reaction**: positive aesthetic feedback from wearer
+
+---
 
 ## Functional Requirements
 
-### Core Features
-- **Pattern Display**: [Requirements]
-- **Pattern Switching**: [Requirements]
-- **Brightness Control**: [Requirements]
-- **WiFi Control**: [Requirements]
-- **Battery Operation**: [Requirements]
+### Iteration V1
 
-### User Interactions
-- **Setup Process**: [Steps and requirements]
-- **Pattern Selection**: [Method and requirements]
-- **Real-time Control**: [Control methods]
-- **Configuration**: [Settings and options]
+#### Core Features (V1)
+- Display animated LED patterns on the hat’s outer surface (covering hat as an LED matrix)
+- Switch between a small set of predefined patterns using **mechanical control** as a primary control  
+  (any BT/WiFi connectivity can be a secondary one)
+- Global brightness limiting for power and heat safety
+- Battery-powered operation with safe shutdown behavior
 
-### Pattern Management
-- **Pattern Upload**: [Method and format]
-- **Pattern Storage**: [Capacity and organization]
-- **Pattern Presets**: [Preset functionality]
-- **Pattern Customization**: [Customization options]
+#### User Interaction (V1)
+- Primary control (assuming PixelBlaze V3 Pico limitations)
+  - Button press → next pattern
+- No phone app required in V1
+- No complex setup or configuration required
+
+#### Pattern Management (V1)
+- Patterns are preloaded at build time
+- No dynamic upload or editing in V1
+- Pattern set is curated and limited (quality > quantity)
+
+---
+
+## Post-V1 Iterations
+
+### Axis 1: Interaction & Control (UX evolution)
+- **Secondary mechanical input**
+  - Brightness knob (potentiometer via Pixelblaze expansion)
+  - Or second hidden button (brightness up/down)
+- **Gesture-based control**
+  - Shake / tilt to switch patterns (accelerometer-driven)
+  - Nod forward → dim / nod back → brighten
+- **Contextual button behavior**
+  - Short press: next pattern
+  - Long press: toggle “low power mode”
+  - Double press: favorite pattern
+
+**Guardrail:** still **no menus**, no learning curve.
+
+### Axis 2: Pattern Intelligence & Reactivity
+This is where Pixelblaze really shines. These keep UX simple while making behavior feel “alive”.
+
+- **Motion-reactive patterns**
+  - Walking vs standing
+  - Dancing vs idle
+- **Environmental responsiveness**
+  - Ambient light sensor → auto brightness
+  - Sound-reactive patterns (if mic added later)
+- **“Mood sets”**
+  - Calm mode (slow, dim)
+  - Party mode (faster, brighter)
+  - Still selected with same button, not a UI
+
+### Axis 3: Power & Reliability Enhancements
+These are invisible features — perfect for Post-V1. None of this adds user complexity.
+
+- **Battery level signaling via LEDs**
+  - Subtle color overlay or pulse
+- **Adaptive brightness**
+  - Gradual dimming as battery drops
+- **Thermal safety behaviors**
+  - Auto-dim if internal temp rises
+- **Sleep / idle mode**
+  - Detect no motion → dim or pause patterns
+
+### Axis 4: Physical / Industrial Design
+Purely hardware iteration.
+
+- Modular electronics insert (hat-agnostic)
+- Improved diffusion layer (softer light)
+
+### Axis 6: Interconnectivity with other wearables
+- When Cat-bike or other LED devices are ready, create interconnectivity between devices so they are lit in-sync  
+  (will require WiFi hub, etc.)
+
+---
+
+## Non-Goals (Explicitly Out of Scope)
+These are intentionally excluded to prevent scope creep:
+
+- No display to live-control the state
+- Any web-based UI is limited to what is provided by the controller (e.g., Pixelblaze UI)
+
+---
 
 ## Non-Functional Requirements
 
 ### Performance
-- **Battery Life**: [Target runtime] hours
-- **Pattern Refresh Rate**: [FPS] minimum
-- **WiFi Connection Time**: [Seconds] maximum
-- **Pattern Switching Latency**: [Milliseconds] maximum
-- **Startup Time**: [Seconds] maximum
+- Smooth animations (no visible stutter)
+- Predictable startup behavior
+- Pattern switching latency < 500 ms
 
 ### Usability
-- **Setup Time**: [Minutes] maximum
-- **Learning Curve**: [Description]
-- **Ease of Use**: [Description]
-- **Documentation**: [Requirements]
-
-### Reliability
-- **Operating Temperature**: [Range]
-- **Durability**: [Lifespan/cycles]
-- **Failure Rate**: [Target percentage]
-- **MTBF**: [Mean time between failures]
+- Zero-instruction use
+- Intuitive single-button interaction
+- No need to understand electronics or software
 
 ### Safety
-- **Electrical Safety**: [Standards/requirements]
-- **Physical Safety**: [Requirements]
-- **Battery Safety**: [Protection requirements]
-- **Heat Management**: [Temperature limits]
+- LED brightness capped to safe current levels
+- No noticeable surface heating
+- Battery protection against over-discharge
+- All wiring insulated and strain-relieved
 
-### Compatibility
-- **LED Types**: [Supported types]
-- **Power Sources**: [Supported sources]
-- **WiFi Standards**: [802.11 standards]
-- **Browsers**: [Web interface compatibility]
+---
 
 ## Design Requirements
 
 ### Physical Design
-- **Form Factor**: [Size and shape requirements]
-- **Weight**: [Maximum weight]
-- **Comfort**: [Wearability requirements]
-- **Aesthetics**: [Visual design requirements]
+- Lightweight and balanced on head
+- Secure mounting of electronics
+- Sweat- and light rain-resistant
+- Clean, minimal appearance (electronics hidden)
 
-### User Interface
-- **Web Interface**: [Requirements]
-- **Control Methods**: [Available methods]
-- **Feedback**: [Visual/other feedback]
-- **Accessibility**: [Accessibility requirements]
+### Aesthetic Direction
+- Expressive but not distracting (not too bright)
+- Patterns should feel intentional, not noisy
+- Favor smooth color transitions over harsh flashing
+- Patterns should leverage Pixelblaze V3 Pico accelerometer functionality
+
+---
 
 ## Constraints
 
 ### Technical Constraints
-- **Controller Limitations**: [Constraints]
-- **Power Constraints**: [Limitations]
-- **LED Constraints**: [Limitations]
-- **WiFi Constraints**: [Range/performance limits]
+- Limited battery capacity (head-mounted)
+- Thermal constraints near skin
+- **147 LEDs** distributed as a round matrix on top of the hat
 
 ### Physical Constraints
-- **Size Limitations**: [Maximum dimensions]
-- **Weight Limitations**: [Maximum weight]
-- **Form Factor**: [Shape requirements]
+- Must not significantly alter hat comfort
+- Must not increase head temperature noticeably
 
-### Budget Constraints
-- **Target Cost**: [Amount]
-- **Component Budget**: [Breakdown]
-- **Development Budget**: [If applicable]
+### Time & Scope
+- Single-person build
+- Iterative prototyping acceptable
+- V1 optimized for reliability, not feature richness
 
-### Time Constraints
-- **Development Timeline**: [Timeline]
-- **Key Milestones**: [Milestone dates]
-- **Release Date**: [Target date]
+---
 
-## User Stories
+## Key Risks & Mitigation
 
-### Primary User Stories
-- **Story 1**: As a [user type], I want [goal] so that [benefit]
-- **Story 2**: As a [user type], I want [goal] so that [benefit]
-- **Story 3**: As a [user type], I want [goal] so that [benefit]
+### Risk: Battery drain or brownouts
+- **Mitigation**: conservative brightness cap, power budget modeling
 
-### Secondary User Stories
-- **Story 4**: As a [user type], I want [goal] so that [benefit]
-- **Story 5**: As a [user type], I want [goal] so that [benefit]
+### Risk: Excessive heat
+- **Mitigation**: LED density limits, brightness limiting, real-world testing
 
-## Testing Requirements
-
-### Functional Testing
-- **Pattern Display**: [Test requirements]
-- **Pattern Switching**: [Test requirements]
-- **Control Interface**: [Test requirements]
-- **Power Management**: [Test requirements]
-
-### Performance Testing
-- **Battery Life**: [Test conditions and targets]
-- **Pattern Performance**: [Frame rate and smoothness]
-- **WiFi Range**: [Range testing]
-- **Stress Testing**: [Load and duration tests]
-
-### User Testing
-- **Usability Testing**: [Test scenarios]
-- **Wear Testing**: [Comfort and durability]
-- **Field Testing**: [Real-world conditions]
-
-## Dependencies
-
-### External Dependencies
-- **Pixelblaze Controller**: [Availability and version]
-- **LED Components**: [Availability]
-- **Power Components**: [Availability]
-- **Other Components**: [List]
-
-### Internal Dependencies
-- **Documentation**: [Completion requirements]
-- **Pattern Development**: [Pattern library requirements]
-- **Hardware Design**: [Design completion]
-- **Testing**: [Test completion]
-
-## Risks and Mitigation
-
-### Technical Risks
-- **Risk 1**: [Description]
-  - **Impact**: [High/Medium/Low]
-  - **Probability**: [High/Medium/Low]
-  - **Mitigation**: [Strategy]
-
-- **Risk 2**: [Description]
-  - **Impact**: [High/Medium/Low]
-  - **Probability**: [High/Medium/Low]
-  - **Mitigation**: [Strategy]
-
-### Project Risks
-- **Risk 1**: [Description]
-  - **Impact**: [High/Medium/Low]
-  - **Probability**: [High/Medium/Low]
-  - **Mitigation**: [Strategy]
-
-## Future Enhancements
-
-### Phase 2 Features
-- **Feature 1**: [Description]
-- **Feature 2**: [Description]
-- **Feature 3**: [Description]
-
-### Long-term Vision
-- **Vision**: [Long-term product vision]
+### Risk: UX complexity
+- **Mitigation**: one-button control only, explicit non-goals
