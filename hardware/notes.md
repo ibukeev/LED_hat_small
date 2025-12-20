@@ -149,3 +149,4 @@ See `hardware/schematics/` directory for:
 - Battery safety guidelines: [Links]
 - Relevant standards: [List]
 
+

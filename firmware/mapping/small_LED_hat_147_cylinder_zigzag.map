@@ -1,0 +1,20 @@
+function (pixelCount) {
+  var rows = 7;              // LEDs per vertical line
+  var cols = 21;             // 147 / 7
+  var map = [];
+  for (var i = 0; i < pixelCount; i++) {
+    var col = Math.floor(i / rows); // 0..20
+    var row = i % rows;             // 0..6 in wiring order
+
+    // Zigzag: reverse row direction on every odd column
+    var physicalRow = (col % 2 === 0) ? row : (rows - 1 - row);
+
+    var angle = (col / cols) * Math.PI * 2; // clockwise around hat
+    var x = Math.cos(angle);
+    var y = Math.sin(angle);
+    var z = physicalRow / (rows - 1);       // bottom->top
+
+    map.push([x, y, z]);
+  }
+  return map;
+}
