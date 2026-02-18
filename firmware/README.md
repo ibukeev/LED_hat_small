@@ -46,7 +46,10 @@ firmware/
 - Multiple wave layers
 - Adjustable wave parameters
 
-### [Add more patterns as created]
+### Ukrainian Flag (`patterns/ukrainian-flag.pe`)
+- Static Ukrainian flag (blue over yellow)
+- Optional blink and strobe modes
+- Tilt and motion reactive via Sensor Expansion Board accelerometer
 
 ## Pattern Development
 
@@ -139,6 +142,5 @@ When adding new patterns:
 2. Document parameters
 3. Include usage notes
 4. Add to this README
-
 
 
