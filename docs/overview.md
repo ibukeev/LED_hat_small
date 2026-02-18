@@ -46,3 +46,4 @@ This project is a wearable LED hat powered by a Pixelblaze controller, designed 
 - [ ] Advanced sensor integration
 
 
+
