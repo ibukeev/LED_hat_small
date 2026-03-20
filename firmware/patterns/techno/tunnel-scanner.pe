@@ -100,7 +100,7 @@ function updateReactiveBands() {
 
   // Bass onset detector: only rising edges create punch flashes.
   var onset = lowTarget - low
-  if (onset > 0.07) {
+  if (onset > 0.045) {
     kick = max(kick, clamp01(onset * (1.6 + kickBoost * 0.8)))
   }
   kick *= 0.84
