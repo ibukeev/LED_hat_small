@@ -1,45 +1,45 @@
 // Pattern: Ukrainian Flag (Reactive)
-// Description: Static Ukrainian flag with optional blinking, strobing, and accelerometer response.
-// Author: [Your Name]
-// Version: 1.0
+// Description: Blue over yellow with optional blink/strobe and accelerometer reaction.
+// Version: 1.1
 
-// --- Flag colors (normalized RGB) ---
-export var blue = [0.0, 0.357, 0.733]   // #005BBB
-export var yellow = [1.0, 0.835, 0.0]   // #FFD500
+// Flag colors (#005BBB and #FFD500)
+export var blueR = 0.0
+export var blueG = 0.357
+export var blueB = 0.733
+export var yellowR = 1.0
+export var yellowG = 0.835
+export var yellowB = 0.0
 
-// --- Flag layout ---
-export var bandSplit = 0.5             // 0..1, boundary between yellow (bottom) and blue (top)
-export var bandSoftness = 0.02         // 0 = hard edge, higher = softer blend
-export var tiltAmount = 0.25           // accelerometer tilt effect on the split
+// Flag layout
+export var bandSplit = 0.5
+export var bandSoftness = 0.02
+export var tiltAmount = 0.25
 
-// --- Blink / strobe controls ---
-export var speed = 1.0                 // master time scaling
-export var blinkHz = 0.0               // 0 disables blinking
-
-// strobeStyle: 0=off, 1=smooth, 2=inLonger, 3=outLonger
-export var strobeStyle = 0
+// Time controls
+export var speed = 1.0
+export var blinkHz = 0.0
+export var strobeStyle = 0   // 0=off, 1=smooth, 2=inLonger, 3=outLonger
 export var strobeHz = 8.0
-export var strobeDuty = 0.5            // used for asymmetric strobe
+export var strobeDuty = 0.5
 export var strobeInPow = 2.0
 export var strobeOutPow = 2.0
 
-// --- Motion reaction ---
-export var motionBoost = 0.6           // extra brightness from movement
-export var motionScale = 2.0           // sensitivity (higher = more sensitive)
+// Motion reaction
+export var motionBoost = 0.6
+export var motionScale = 2.0
 
-// Recommended settings:
-// - Static: blinkHz=0, strobeStyle=0, tiltAmount=0.25
-// - Blink: blinkHz=1..3, strobeStyle=0
-// - Smooth strobe: strobeStyle=1, strobeHz=6..12
-// - In/Out longer: strobeStyle=2 or 3, strobeDuty=0.35..0.65
-// - Motion-reactive: motionBoost=0.6..1.0, motionScale=1.5..3.0
-
-// --- Sensor Expansion Board variables ---
-export var light = -1                  // if remains -1, sensor board not connected
-export var accelerometer               // array [x, y, z] when sensor board is present
+// Sensor Expansion Board values (Pixelblaze sets these when available)
+export var light = -1
+export var accelerometer
 
 var PI2 = PI * 2
 var elapsed = 0
+
+// Cached orientation/motion from beforeRender
+var nx = 0
+var ny = 0
+var nz = 1
+var motion = 0
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -56,88 +56,96 @@ function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t)
 }
 
-function hasSensor() { return light != -1 }
+function hasSensor() {
+  return light != -1
+}
 
-function norm3(ax, ay, az) {
-  var m = sqrt(ax * ax + ay * ay + az * az)
-  if (m <= 0) return [0, 0, 1]
-  return [ax / m, ay / m, az / m]
+function normalize3(x, y, z) {
+  var m = sqrt(x * x + y * y + z * z)
+  if (m <= 0) {
+    nx = 0
+    ny = 0
+    nz = 1
+    return
+  }
+  nx = x / m
+  ny = y / m
+  nz = z / m
 }
 
 function strobeEnvelope(phase, style) {
-  if (style == 1) {
-    // Smooth sinusoid pulse
-    return 0.5 - 0.5 * cos(phase * PI2)
-  }
+  if (style == 1) return 0.5 - 0.5 * cos(phase * PI2)
 
-  // Asymmetric ramp
   var duty = strobeDuty
-  if (style == 2 && duty < 0.6) duty = 0.6 // in longer
-  if (style == 3 && duty > 0.4) duty = 0.4 // out longer
+  if (style == 2 && duty < 0.6) duty = 0.6
+  if (style == 3 && duty > 0.4) duty = 0.4
 
-  if (phase < duty) {
-    return pow(phase / duty, strobeInPow)
-  }
+  if (phase < duty) return pow(phase / duty, strobeInPow)
   return pow((1 - phase) / (1 - duty), strobeOutPow)
 }
 
-export function beforeRender(delta) {
-  // Convert ms to seconds and apply user speed control.
-  elapsed += (delta / 1000) * speed
+function renderCore(x, y, z) {
+  var height = x * nx + y * ny + z * nz
+  var split = bandSplit * nz
+
+  var t = 0
+  if (bandSoftness > 0) {
+    t = smoothstep(split - bandSoftness, split + bandSoftness, height)
+  } else if (height > split) {
+    t = 1
+  }
+
+  var r = lerp(yellowR, blueR, t)
+  var g = lerp(yellowG, blueG, t)
+  var b = lerp(yellowB, blueB, t)
+
+  var blink = 1
+  if (blinkHz > 0) {
+    if (((elapsed * blinkHz) % 1) >= 0.5) blink = 0
+  }
+
+  var strobe = 1
+  if (strobeStyle > 0 && strobeHz > 0) {
+    strobe = strobeEnvelope((elapsed * strobeHz) % 1, strobeStyle)
+  }
+
+  var envelope = clamp01(blink * strobe * (1 + motion * motionBoost))
+  rgb(r * envelope, g * envelope, b * envelope)
 }
 
-export function render3D(index, x, y, z) {
-  var ax = 0, ay = 0, az = 1
-  var motion = 0
+export function beforeRender(delta) {
+  elapsed += (delta / 1000) * speed
+
+  motion = 0
+  var ax = 0
+  var ay = 0
+  var az = 1
 
   if (hasSensor() && accelerometer) {
     ax = accelerometer[0]
     ay = accelerometer[1]
     az = accelerometer[2]
-
     var mag = sqrt(ax * ax + ay * ay + az * az)
     motion = clamp01(abs(mag - 1) * motionScale)
   }
 
-  // Tilted boundary based on gravity plane
-  var g = norm3(ax, ay, az)
-  var nz = 1 - tiltAmount
-  var nx = g[0] * tiltAmount
-  var ny = g[1] * tiltAmount
-  var n = norm3(nx, ny, nz + g[2] * tiltAmount)
+  // Build a mostly-up normal, tilted by gravity direction.
+  var tx = ax * tiltAmount
+  var ty = ay * tiltAmount
+  var tz = (1 - tiltAmount) + az * tiltAmount
+  normalize3(tx, ty, tz)
+}
 
-  var height = x * n[0] + y * n[1] + z * n[2]
-  var split = bandSplit * n[2]
+// 1D fallback for setups without map coordinates
+export function render(index) {
+  var x = index / pixelCount
+  renderCore(x, 0, 0)
+}
 
-  var t = 0
-  if (bandSoftness > 0) {
-    var edge0 = split - bandSoftness
-    var edge1 = split + bandSoftness
-    t = smoothstep(edge0, edge1, height)
-  } else {
-    if (height > split) t = 1
-  }
+export function render2D(index, x, y) {
+  renderCore(x, y, 0)
+}
 
-  // Blend yellow (bottom) to blue (top)
-  var r = lerp(yellow[0], blue[0], t)
-  var g = lerp(yellow[1], blue[1], t)
-  var b = lerp(yellow[2], blue[2], t)
-
-  // Blink
-  var blink = 1
-  if (blinkHz > 0) {
-    var bphase = (elapsed * blinkHz) % 1
-    if (bphase >= 0.5) blink = 0
-  }
-
-  // Strobe
-  var strobe = 1
-  if (strobeStyle > 0 && strobeHz > 0) {
-    var sphase = (elapsed * strobeHz) % 1
-    strobe = strobeEnvelope(sphase, strobeStyle)
-  }
-
-  var envelope = clamp01(blink * strobe * (1 + motion * motionBoost))
-
-  rgb(r * envelope, g * envelope, b * envelope)
+export function render3D(index, x, y, z) {
+  renderCore(x, y, z)
 }
