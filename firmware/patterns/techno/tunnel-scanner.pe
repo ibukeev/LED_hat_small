@@ -19,7 +19,6 @@ export var sensorGain = 10.0
 export var manualLow = 0.0
 export var manualMid = 0.0
 export var manualHigh = 0.0
-export var fallbackDrive = 0.6
 
 // Sensor board value (if available)
 export var light = -1
@@ -62,20 +61,10 @@ function setPalette() {
   }
 }
 
-function synthBand(phase, shapePow) {
-  var s = sin(phase * PI2) * 0.5 + 0.5
-  return pow(s, shapePow)
-}
-
 function updateReactiveBands() {
   var fl = 0
   var fm = 0
   var fh = 0
-
-  // Fallback beat engine so the pattern still moves with no audio source.
-  fl = synthBand(elapsed * 2.0, 5) * fallbackDrive
-  fm = synthBand(elapsed * 4.2 + 0.17, 3.5) * fallbackDrive
-  fh = synthBand(elapsed * 11.0 + 0.51, 2.2) * fallbackDrive
 
   // Optional sensor reactivity based on fast light changes.
   if (autoReactive > 0.5 && light >= 0) {
@@ -176,7 +165,7 @@ export function sliderPaletteMode(v) { paletteMode = floor(v * 2.999) }
 
 // Single macro control for overall "reactivity feel".
 export function sliderEnergy(v) {
-  fallbackDrive = 0.25 + v * 0.75
+  sensorGain = 3 + v * 17
   kickBoost = 0.4 + v * 2.0
   sparkAmount = 0.05 + v * 0.55
 }
