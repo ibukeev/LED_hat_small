@@ -14,22 +14,27 @@ export var sparkAmount = 0.28
 export var paletteMode = 1 // 0=mono, 1=acid green, 2=warning red
 
 // Audio/reactivity controls
-export var autoReactive = 1
-export var sensorGain = 10.0
+export var audioGain = 1.2
+export var noiseGate = 0.10
 export var manualLow = 0.0
 export var manualMid = 0.0
 export var manualHigh = 0.0
 
-// Sensor board value (if available)
-export var light = -1
+// Values populated by Pixelblaze Sensor Expansion Board when connected.
+export var frequencyData = array(32)
+export var energyAverage = -1
+export var maxFrequency = 0
+export var maxFrequencyMagnitude = 0
 
 var elapsed = 0
 var PI2 = PI * 2
 var low = 0
 var mid = 0
 var high = 0
-var lastLight = 0
-var lpfLight = 0
+var lowPeak = 0.01
+var midPeak = 0.01
+var highPeak = 0.01
+var energyPeak = 0.01
 
 var accR = 0.3
 var accG = 1.0
@@ -66,21 +71,34 @@ function updateReactiveBands() {
   var fm = 0
   var fh = 0
 
-  // Optional sensor reactivity based on fast light changes.
-  if (autoReactive > 0.5 && light >= 0) {
-    lpfLight = lpfLight * 0.92 + light * 0.08
-    var d = abs(light - lastLight)
-    lastLight = light
+  // True audio reactivity from Sensor Expansion Board FFT + energy values.
+  if (energyAverage >= 0) {
+    var lowRaw = frequencyData[1] + frequencyData[2] + frequencyData[3] + frequencyData[4]
+    var midRaw = frequencyData[6] + frequencyData[7] + frequencyData[8] + frequencyData[9] + frequencyData[10] + frequencyData[11] + frequencyData[12]
+    var highRaw = frequencyData[18] + frequencyData[19] + frequencyData[20] + frequencyData[21] + frequencyData[22] + frequencyData[23] + frequencyData[24] + frequencyData[25] + frequencyData[26] + frequencyData[27] + frequencyData[28] + frequencyData[29] + frequencyData[30] + frequencyData[31]
 
-    var pulse = clamp01(d * sensorGain)
-    fl = max(fl, pulse)
-    fm = max(fm, clamp01(abs(light - lpfLight) * sensorGain * 0.7))
-    fh = max(fh, clamp01(pulse * 0.6 + abs(sin(elapsed * 31.4)) * 0.3))
+    // Auto-gain normalization so music level changes don't kill dynamics.
+    lowPeak = max(lowPeak * 0.992, lowRaw)
+    midPeak = max(midPeak * 0.992, midRaw)
+    highPeak = max(highPeak * 0.992, highRaw)
+    energyPeak = max(energyPeak * 0.997, energyAverage)
+
+    fl = clamp01((lowRaw / lowPeak) * audioGain)
+    fm = clamp01((midRaw / midPeak) * audioGain)
+    fh = clamp01((highRaw / highPeak) * audioGain)
+
+    // Simple gate to suppress idle noise/hiss when music is off.
+    var eNorm = energyAverage / energyPeak
+    var gate = clamp01((eNorm - noiseGate) / max(0.001, 1 - noiseGate))
+    fl *= gate
+    fm *= gate
+    fh *= gate
   }
 
-  low = clamp01(max(fl, manualLow))
-  mid = clamp01(max(fm, manualMid))
-  high = clamp01(max(fh, manualHigh))
+  // Smooth to reduce chatter at high frame rates.
+  low = lerp(low, clamp01(max(fl, manualLow)), 0.22)
+  mid = lerp(mid, clamp01(max(fm, manualMid)), 0.20)
+  high = lerp(high, clamp01(max(fh, manualHigh)), 0.28)
 }
 
 function renderCore(x, y, z) {
@@ -165,7 +183,8 @@ export function sliderPaletteMode(v) { paletteMode = floor(v * 2.999) }
 
 // Single macro control for overall "reactivity feel".
 export function sliderEnergy(v) {
-  sensorGain = 3 + v * 17
+  audioGain = 0.6 + v * 2.2
+  noiseGate = 0.22 - v * 0.18
   kickBoost = 0.4 + v * 2.0
   sparkAmount = 0.05 + v * 0.55
 }
