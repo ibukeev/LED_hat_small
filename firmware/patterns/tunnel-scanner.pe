@@ -1,0 +1,186 @@
+// Pattern: Tunnel Scanner (Techno Bunker)
+// Description: A hard-edged scanning beam with kick boosts, trail echoes, and spark grit.
+// Version: 0.1
+
+// Main controls
+export var intensity = 0.8
+export var darknessFloor = 0.04
+export var sweepSpeed = 0.9
+export var beamWidth = 0.12
+export var trailDecay = 0.45
+export var jitter = 0.12
+export var kickBoost = 0.9
+export var sparkAmount = 0.4
+export var paletteMode = 1 // 0=mono, 1=acid green, 2=warning red
+
+// Audio/reactivity controls
+export var autoReactive = 1
+export var sensorGain = 8.0
+export var manualLow = 0.0
+export var manualMid = 0.0
+export var manualHigh = 0.0
+export var fallbackDrive = 0.7
+
+// Sensor board value (if available)
+export var light = -1
+
+var elapsed = 0
+var PI2 = PI * 2
+var low = 0
+var mid = 0
+var high = 0
+var lastLight = 0
+var lpfLight = 0
+
+var accR = 0.3
+var accG = 1.0
+var accB = 0.15
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t
+}
+
+function pingpong(t) {
+  var p = t % 2
+  if (p > 1) return 2 - p
+  return p
+}
+
+function setPalette() {
+  if (paletteMode < 0.5) {
+    accR = 1; accG = 1; accB = 1
+  } else if (paletteMode < 1.5) {
+    accR = 0.3; accG = 1.0; accB = 0.15
+  } else {
+    accR = 1.0; accG = 0.18; accB = 0.08
+  }
+}
+
+function synthBand(phase, shapePow) {
+  var s = sin(phase * PI2) * 0.5 + 0.5
+  return pow(s, shapePow)
+}
+
+function updateReactiveBands() {
+  var fl = 0
+  var fm = 0
+  var fh = 0
+
+  // Fallback beat engine so the pattern still moves with no audio source.
+  fl = synthBand(elapsed * 2.0, 5) * fallbackDrive
+  fm = synthBand(elapsed * 4.2 + 0.17, 3.5) * fallbackDrive
+  fh = synthBand(elapsed * 11.0 + 0.51, 2.2) * fallbackDrive
+
+  // Optional sensor reactivity based on fast light changes.
+  if (autoReactive > 0.5 && light >= 0) {
+    lpfLight = lpfLight * 0.92 + light * 0.08
+    var d = abs(light - lastLight)
+    lastLight = light
+
+    var pulse = clamp01(d * sensorGain)
+    fl = max(fl, pulse)
+    fm = max(fm, clamp01(abs(light - lpfLight) * sensorGain * 0.7))
+    fh = max(fh, clamp01(pulse * 0.6 + abs(sin(elapsed * 31.4)) * 0.3))
+  }
+
+  low = clamp01(max(fl, manualLow))
+  mid = clamp01(max(fm, manualMid))
+  high = clamp01(max(fh, manualHigh))
+}
+
+function renderCore(x, y, z) {
+  // Scanner position with kick-driven speedup.
+  var rate = sweepSpeed * (1 + low * kickBoost * 1.5)
+  var pos = pingpong(elapsed * rate)
+
+  // Rough machine jitter.
+  var jitterPhase = elapsed * (6 + 12 * high) + y * 1.7 + z * 0.9
+  var posJitter = (sin(jitterPhase * PI2) * 0.5 + 0.5 - 0.5) * jitter * 0.35
+  pos = clamp01(pos + posJitter)
+
+  var dist = abs(x - pos)
+  var bw = 0.02 + beamWidth * 0.35
+  var beam = exp(-pow(dist / bw, 2.0))
+
+  // Trail behind the beam depending on sweep direction.
+  var p2 = (elapsed * rate) % 2
+  var dir = 1
+  if (p2 > 1) dir = -1
+
+  var behind = 0
+  if (dir > 0) {
+    behind = pos - x
+  } else {
+    behind = x - pos
+  }
+
+  var trail = 0
+  if (behind > 0) {
+    trail = exp(-behind / (0.03 + trailDecay * 0.35)) * (0.25 + 0.75 * mid)
+  }
+
+  // High-band spark grit.
+  var grain = sin((x * 73 + y * 29 + z * 11 + elapsed * 22) * PI2) * 0.5 + 0.5
+  var spark = 0
+  if (grain > (0.92 - 0.25 * high)) {
+    spark = high * sparkAmount
+  }
+
+  var v = darknessFloor
+  v += beam * (0.55 + 0.45 * low)
+  v += trail * 0.7
+  v += spark * 0.45
+  v = clamp01(v * intensity)
+
+  // Blend from cool white to accent tone by energy.
+  var mixAmt = clamp01(0.2 + low * 0.6 + high * 0.2)
+  var r = v * lerp(1.0, accR, mixAmt)
+  var g = v * lerp(1.0, accG, mixAmt)
+  var b = v * lerp(1.0, accB, mixAmt)
+  rgb(r, g, b)
+}
+
+export function beforeRender(delta) {
+  elapsed += delta / 1000
+  setPalette()
+  updateReactiveBands()
+}
+
+// 1D fallback
+export function render(index) {
+  var x = (index + 0.5) / pixelCount
+  renderCore(x, 0, 0)
+}
+
+export function render2D(index, x, y) {
+  renderCore(x, y, 0)
+}
+
+export function render3D(index, x, y, z) {
+  var x1d = (index + 0.5) / pixelCount
+  renderCore(x1d, y, z)
+}
+
+// Pixelblaze UI controls
+export function sliderIntensity(v) { intensity = 0.1 + v * 0.9 }
+export function sliderDarknessFloor(v) { darknessFloor = v * 0.2 }
+export function sliderSweepSpeed(v) { sweepSpeed = 0.1 + v * 2.4 }
+export function sliderBeamWidth(v) { beamWidth = 0.03 + v * 0.5 }
+export function sliderTrailDecay(v) { trailDecay = v }
+export function sliderJitter(v) { jitter = v }
+export function sliderKickBoost(v) { kickBoost = v * 2.0 }
+export function sliderSparkAmount(v) { sparkAmount = v }
+export function sliderPaletteMode(v) { paletteMode = floor(v * 2.999) }
+
+export function sliderAutoReactive(v) { autoReactive = v >= 0.5 ? 1 : 0 }
+export function sliderSensorGain(v) { sensorGain = 1 + v * 20 }
+export function sliderFallbackDrive(v) { fallbackDrive = v }
+export function sliderManualLow(v) { manualLow = v }
+export function sliderManualMid(v) { manualMid = v }
+export function sliderManualHigh(v) { manualHigh = v }
