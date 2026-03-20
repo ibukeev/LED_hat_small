@@ -39,6 +39,7 @@ export var light = -1                  // if remains -1, sensor board not connec
 export var accelerometer               // array [x, y, z] when sensor board is present
 
 var PI2 = PI * 2
+var elapsed = 0
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -78,6 +79,11 @@ function strobeEnvelope(phase, style) {
     return pow(phase / duty, strobeInPow)
   }
   return pow((1 - phase) / (1 - duty), strobeOutPow)
+}
+
+export function beforeRender(delta) {
+  // Convert ms to seconds and apply user speed control.
+  elapsed += (delta / 1000) * speed
 }
 
 export function render3D(index, x, y, z) {
@@ -120,14 +126,14 @@ export function render3D(index, x, y, z) {
   // Blink
   var blink = 1
   if (blinkHz > 0) {
-    var bphase = (time * speed * blinkHz) % 1
+    var bphase = (elapsed * blinkHz) % 1
     if (bphase >= 0.5) blink = 0
   }
 
   // Strobe
   var strobe = 1
   if (strobeStyle > 0 && strobeHz > 0) {
-    var sphase = (time * speed * strobeHz) % 1
+    var sphase = (elapsed * strobeHz) % 1
     strobe = strobeEnvelope(sphase, strobeStyle)
   }
 
