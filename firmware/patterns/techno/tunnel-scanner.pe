@@ -32,6 +32,7 @@ var PI2 = PI * 2
 var low = 0
 var mid = 0
 var high = 0
+var kick = 0
 var lowPeak = 0.01
 var midPeak = 0.01
 var highPeak = 0.01
@@ -93,14 +94,25 @@ function updateReactiveBands() {
   }
 
   // Smooth to reduce chatter at high frame rates.
-  low = lerp(low, clamp01(max(fl, manualLow)), 0.35)
-  mid = lerp(mid, clamp01(max(fm, manualMid)), 0.26)
-  high = lerp(high, clamp01(max(fh, manualHigh)), 0.32)
+  var lowTarget = clamp01(max(fl, manualLow))
+  var midTarget = clamp01(max(fm, manualMid))
+  var highTarget = clamp01(max(fh, manualHigh))
+
+  // Bass onset detector: only rising edges create punch flashes.
+  var onset = lowTarget - low
+  if (onset > 0.07) {
+    kick = max(kick, clamp01(onset * (1.6 + kickBoost * 0.8)))
+  }
+  kick *= 0.84
+
+  low = lerp(low, lowTarget, 0.35)
+  mid = lerp(mid, midTarget, 0.26)
+  high = lerp(high, highTarget, 0.32)
 }
 
 function renderCore(x, y, z) {
   // Scanner position with kick-driven speedup.
-  var rate = sweepSpeed * (0.55 + low * kickBoost * 1.85)
+  var rate = sweepSpeed * (0.55 + low * kickBoost * 1.85 + kick * 2.2)
   var pos = pingpong(elapsed * rate)
 
   // Rough machine jitter.
@@ -140,6 +152,8 @@ function renderCore(x, y, z) {
   v += beam * (0.2 + 1.7 * low)
   v += trail * (0.15 + 0.95 * mid)
   v += spark * (0.12 + 0.75 * high)
+  // Short full-frame punch on kick onsets.
+  v += kick * (0.35 + 0.75 * energy)
   v *= 0.12 + 1.25 * energy
   v = clamp01(v * intensity)
 
