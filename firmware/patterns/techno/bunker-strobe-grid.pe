@@ -16,6 +16,9 @@ var mid = 0
 var high = 0
 var energy = 0
 var t = 0
+var kickPulse = 0
+var stepClock = 0
+var stepIndex = 0
 
 var lowPeak = 0.01
 var midPeak = 0.01
@@ -41,11 +44,12 @@ function updateAudio() {
     var midRaw = frequencyData[7] + frequencyData[8] + frequencyData[9] + frequencyData[10] + frequencyData[11]
     var highRaw = frequencyData[20] + frequencyData[21] + frequencyData[22] + frequencyData[23] + frequencyData[24] + frequencyData[25] + frequencyData[26] + frequencyData[27] + frequencyData[28] + frequencyData[29]
 
-    lowPeak = max(lowPeak * 0.992, lowRaw)
-    midPeak = max(midPeak * 0.992, midRaw)
-    highPeak = max(highPeak * 0.992, highRaw)
+    // Slower decay keeps more contrast between quiet and hits.
+    lowPeak = max(lowPeak * 0.997, lowRaw)
+    midPeak = max(midPeak * 0.996, midRaw)
+    highPeak = max(highPeak * 0.996, highRaw)
 
-    fl = clamp01((lowRaw / max(0.00001, lowPeak)) * (0.9 + 2.0 * reactivity))
+    fl = clamp01((lowRaw / max(0.00001, lowPeak)) * (1.1 + 2.6 * reactivity))
     fm = clamp01((midRaw / max(0.00001, midPeak)) * (0.8 + 1.6 * reactivity))
     fh = clamp01((highRaw / max(0.00001, highPeak)) * (0.6 + 1.2 * reactivity))
 
@@ -58,20 +62,38 @@ function updateAudio() {
     energy = 0
   }
 
+  var prevLow = low
   low = low * 0.65 + fl * 0.35
   mid = mid * 0.72 + fm * 0.28
   high = high * 0.68 + fh * 0.32
+
+  // Kick onset detector for clear rhythm lock.
+  var onset = low - prevLow
+  var thresh = 0.028 + (1 - reactivity) * 0.045
+  if (onset > thresh && energy > 0.08) {
+    kickPulse = 1
+    stepIndex += 1
+  } else {
+    kickPulse *= 0.82
+  }
+
+  // Background sequencing between kicks (much slower than kick updates).
+  stepClock += 0.018 + 0.16 * mid
+  if (stepClock >= 1) {
+    stepClock -= 1
+    stepIndex += 1
+  }
 }
 
 function renderCore(x, y, z) {
   // 8 virtual columns around the hat for a block/grid look.
   var col = floor(x * 8)
-  var step = floor(t * (2 + 10 * reactivity))
+  var step = stepIndex
 
   // Deterministic pseudo-random block enable per step.
   var p = hash1(col + step * 17.0)
   var on = 0
-  if (p < (0.15 + 0.70 * low)) on = 1
+  if (p < (0.08 + 0.78 * low)) on = 1
 
   // Mid adds alternating pattern structure.
   var alt = floor(col + step) % 2
@@ -82,8 +104,9 @@ function renderCore(x, y, z) {
 
   // Kick/energy punch.
   var v = 0
-  if (on) v = 0.18 + 0.82 * low
+  if (on) v = 0.14 + 0.86 * low
   v += energy * (0.20 + 0.80 * low)
+  v += kickPulse * (0.55 + 0.35 * low)
   v = clamp01(v * level)
 
   // High saturation, bunker style.
