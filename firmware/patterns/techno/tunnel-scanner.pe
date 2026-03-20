@@ -1,25 +1,25 @@
 // Pattern: Tunnel Scanner (Techno Bunker)
 // Description: A hard-edged scanning beam with kick boosts, trail echoes, and spark grit.
-// Version: 0.1
+// Version: 0.2
 
 // Main controls
 export var intensity = 0.8
-export var darknessFloor = 0.04
-export var sweepSpeed = 0.9
-export var beamWidth = 0.12
-export var trailDecay = 0.45
-export var jitter = 0.12
-export var kickBoost = 0.9
-export var sparkAmount = 0.4
+export var darknessFloor = 0.02
+export var sweepSpeed = 0.75
+export var beamWidth = 0.18
+export var trailDecay = 0.55
+export var jitter = 0.08
+export var kickBoost = 1.2
+export var sparkAmount = 0.28
 export var paletteMode = 1 // 0=mono, 1=acid green, 2=warning red
 
 // Audio/reactivity controls
 export var autoReactive = 1
-export var sensorGain = 8.0
+export var sensorGain = 10.0
 export var manualLow = 0.0
 export var manualMid = 0.0
 export var manualHigh = 0.0
-export var fallbackDrive = 0.7
+export var fallbackDrive = 0.6
 
 // Sensor board value (if available)
 export var light = -1
@@ -167,20 +167,16 @@ export function render3D(index, x, y, z) {
   renderCore(x1d, y, z)
 }
 
-// Pixelblaze UI controls
+// Pixelblaze UI controls (intentionally minimal for live use)
 export function sliderIntensity(v) { intensity = 0.1 + v * 0.9 }
-export function sliderDarknessFloor(v) { darknessFloor = v * 0.2 }
 export function sliderSweepSpeed(v) { sweepSpeed = 0.1 + v * 2.4 }
 export function sliderBeamWidth(v) { beamWidth = 0.03 + v * 0.5 }
 export function sliderTrailDecay(v) { trailDecay = v }
-export function sliderJitter(v) { jitter = v }
-export function sliderKickBoost(v) { kickBoost = v * 2.0 }
-export function sliderSparkAmount(v) { sparkAmount = v }
 export function sliderPaletteMode(v) { paletteMode = floor(v * 2.999) }
 
-export function sliderAutoReactive(v) { autoReactive = v >= 0.5 ? 1 : 0 }
-export function sliderSensorGain(v) { sensorGain = 1 + v * 20 }
-export function sliderFallbackDrive(v) { fallbackDrive = v }
-export function sliderManualLow(v) { manualLow = v }
-export function sliderManualMid(v) { manualMid = v }
-export function sliderManualHigh(v) { manualHigh = v }
+// Single macro control for overall "reactivity feel".
+export function sliderEnergy(v) {
+  fallbackDrive = 0.25 + v * 0.75
+  kickBoost = 0.4 + v * 2.0
+  sparkAmount = 0.05 + v * 0.55
+}

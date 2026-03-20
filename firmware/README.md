@@ -10,9 +10,14 @@ This directory contains Pixelblaze pattern files (.pe format) and related firmwa
 firmware/
 ├── README.md           # This file
 ├── patterns/           # Pattern files (.pe)
-│   ├── aurora.pe      # Aurora/northern lights effect
-│   ├── waves.pe       # Wave patterns
-│   └── ...            # Additional patterns
+│   ├── techno/         # Underground/club patterns
+│   │   └── tunnel-scanner.pe
+│   ├── burning-man/    # Playa-specific concepts
+│   ├── general/        # Non-theme-specific patterns
+│   │   ├── aurora.pe
+│   │   ├── waves.pe
+│   │   └── ukrainian-flag.pe
+│   └── ...             # Additional patterns
 └── presets/           # Pattern presets and configurations
     ├── default.json   # Default preset configuration
     └── ...           # Additional presets
@@ -36,17 +41,22 @@ firmware/
 
 ## Available Patterns
 
-### Aurora (`patterns/aurora.pe`)
+### Tunnel Scanner (`patterns/techno/tunnel-scanner.pe`)
+- Underground techno scanner beam
+- Audio-reactive look with fallback motion
+- Exposed UI controls for speed, width, trail, strobe feel
+
+### Aurora (`patterns/general/aurora.pe`)
 - Northern lights effect
 - Smooth color transitions
 - Configurable speed and colors
 
-### Waves (`patterns/waves.pe`)
+### Waves (`patterns/general/waves.pe`)
 - Ocean wave simulation
 - Multiple wave layers
 - Adjustable wave parameters
 
-### Ukrainian Flag (`patterns/ukrainian-flag.pe`)
+### Ukrainian Flag (`patterns/general/ukrainian-flag.pe`)
 - Static Ukrainian flag (blue over yellow)
 - Optional blink and strobe modes
 - Tilt and motion reactive via Sensor Expansion Board accelerometer
@@ -142,5 +152,4 @@ When adding new patterns:
 2. Document parameters
 3. Include usage notes
 4. Add to this README
-
 
