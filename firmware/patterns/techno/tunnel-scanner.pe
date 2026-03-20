@@ -1,21 +1,22 @@
 // Pattern: Tunnel Scanner (Techno Bunker)
 // Description: A hard-edged scanning beam with kick boosts, trail echoes, and spark grit.
-// Version: 0.2
+// Version: 0.3
 
 // Main controls
 export var intensity = 0.8
-export var darknessFloor = 0.02
-export var sweepSpeed = 0.75
-export var beamWidth = 0.18
-export var trailDecay = 0.55
+export var darknessFloor = 0.0
+export var sweepSpeed = 0.65
+export var beamWidth = 0.14
+export var trailDecay = 0.42
 export var jitter = 0.08
-export var kickBoost = 1.2
-export var sparkAmount = 0.28
-export var paletteMode = 1 // 0=mono, 1=acid green, 2=warning red
+export var kickBoost = 2.1
+export var sparkAmount = 0.34
+export var paletteMode = 1 // Fixed default: acid green
 
 // Audio/reactivity controls
-export var audioGain = 1.2
-export var noiseGate = 0.10
+export var audioGain = 1.8
+export var energyFloor = 0.0012
+export var energyCeil = 0.012
 export var manualLow = 0.0
 export var manualMid = 0.0
 export var manualHigh = 0.0
@@ -34,7 +35,7 @@ var high = 0
 var lowPeak = 0.01
 var midPeak = 0.01
 var highPeak = 0.01
-var energyPeak = 0.01
+var energy = 0
 
 var accR = 0.3
 var accG = 1.0
@@ -81,29 +82,25 @@ function updateReactiveBands() {
     lowPeak = max(lowPeak * 0.992, lowRaw)
     midPeak = max(midPeak * 0.992, midRaw)
     highPeak = max(highPeak * 0.992, highRaw)
-    energyPeak = max(energyPeak * 0.997, energyAverage)
 
-    fl = clamp01((lowRaw / lowPeak) * audioGain)
-    fm = clamp01((midRaw / midPeak) * audioGain)
-    fh = clamp01((highRaw / highPeak) * audioGain)
+    // Absolute gate based on measured sensor range.
+    energy = clamp01((energyAverage - energyFloor) / max(0.0001, energyCeil - energyFloor))
+    energy = pow(energy, 0.8)
 
-    // Simple gate to suppress idle noise/hiss when music is off.
-    var eNorm = energyAverage / energyPeak
-    var gate = clamp01((eNorm - noiseGate) / max(0.001, 1 - noiseGate))
-    fl *= gate
-    fm *= gate
-    fh *= gate
+    fl = clamp01((lowRaw / max(0.00001, lowPeak)) * audioGain * (0.35 + 1.45 * energy))
+    fm = clamp01((midRaw / max(0.00001, midPeak)) * audioGain * (0.20 + 1.10 * energy))
+    fh = clamp01((highRaw / max(0.00001, highPeak)) * audioGain * (0.15 + 1.00 * energy))
   }
 
   // Smooth to reduce chatter at high frame rates.
-  low = lerp(low, clamp01(max(fl, manualLow)), 0.22)
-  mid = lerp(mid, clamp01(max(fm, manualMid)), 0.20)
-  high = lerp(high, clamp01(max(fh, manualHigh)), 0.28)
+  low = lerp(low, clamp01(max(fl, manualLow)), 0.35)
+  mid = lerp(mid, clamp01(max(fm, manualMid)), 0.26)
+  high = lerp(high, clamp01(max(fh, manualHigh)), 0.32)
 }
 
 function renderCore(x, y, z) {
   // Scanner position with kick-driven speedup.
-  var rate = sweepSpeed * (1 + low * kickBoost * 1.5)
+  var rate = sweepSpeed * (0.55 + low * kickBoost * 1.85)
   var pos = pingpong(elapsed * rate)
 
   // Rough machine jitter.
@@ -140,9 +137,10 @@ function renderCore(x, y, z) {
   }
 
   var v = darknessFloor
-  v += beam * (0.55 + 0.45 * low)
-  v += trail * 0.7
-  v += spark * 0.45
+  v += beam * (0.2 + 1.7 * low)
+  v += trail * (0.15 + 0.95 * mid)
+  v += spark * (0.12 + 0.75 * high)
+  v *= 0.12 + 1.25 * energy
   v = clamp01(v * intensity)
 
   // Blend from cool white to accent tone by energy.
@@ -174,17 +172,15 @@ export function render3D(index, x, y, z) {
   renderCore(x1d, y, z)
 }
 
-// Pixelblaze UI controls (intentionally minimal for live use)
-export function sliderIntensity(v) { intensity = 0.1 + v * 0.9 }
-export function sliderSweepSpeed(v) { sweepSpeed = 0.1 + v * 2.4 }
-export function sliderBeamWidth(v) { beamWidth = 0.03 + v * 0.5 }
-export function sliderTrailDecay(v) { trailDecay = v }
-export function sliderPaletteMode(v) { paletteMode = floor(v * 2.999) }
+// Pixelblaze UI controls: minimal set for fast testing
+export function sliderLevel(v) {
+  intensity = 0.15 + v * 0.85
+}
 
-// Single macro control for overall "reactivity feel".
-export function sliderEnergy(v) {
-  audioGain = 0.6 + v * 2.2
-  noiseGate = 0.22 - v * 0.18
-  kickBoost = 0.4 + v * 2.0
-  sparkAmount = 0.05 + v * 0.55
+export function sliderReactivity(v) {
+  audioGain = 0.8 + v * 2.8
+  energyFloor = 0.0004 + (1 - v) * 0.0026
+  energyCeil = 0.006 + (1 - v) * 0.018
+  kickBoost = 0.8 + v * 2.8
+  sparkAmount = 0.08 + v * 0.52
 }
