@@ -12,8 +12,9 @@ export var yellowB = 0.0
 
 // Flag layout
 export var bandSplit = 0.5
-export var bandSoftness = 0.02
+export var bandSoftness = 0.0
 export var tiltAmount = 0.25
+export var centerBlue = 1
 
 // Time controls
 export var speed = 1.0
@@ -84,6 +85,23 @@ function strobeEnvelope(phase, style) {
   return pow((1 - phase) / (1 - duty), strobeOutPow)
 }
 
+// Pixelblaze UI controls
+export function sliderBandSplit(v) { bandSplit = v }
+export function sliderBandSoftness(v) { bandSoftness = v * 0.2 }
+export function sliderTiltAmount(v) { tiltAmount = v }
+export function sliderCenterBlue(v) { centerBlue = v >= 0.5 ? 1 : 0 }
+
+export function sliderSpeed(v) { speed = v * 3 }
+export function sliderBlinkHz(v) { blinkHz = v * 8 }
+export function sliderStrobeStyle(v) { strobeStyle = floor(v * 3.999) }
+export function sliderStrobeHz(v) { strobeHz = 1 + v * 19 }
+export function sliderStrobeDuty(v) { strobeDuty = 0.1 + v * 0.8 }
+export function sliderStrobeInPow(v) { strobeInPow = 0.5 + v * 4.5 }
+export function sliderStrobeOutPow(v) { strobeOutPow = 0.5 + v * 4.5 }
+
+export function sliderMotionBoost(v) { motionBoost = v * 2 }
+export function sliderMotionScale(v) { motionScale = 0.5 + v * 4.5 }
+
 function renderCore(x, y, z) {
   var height = x * nx + y * ny + z * nz
   var split = bandSplit * nz
@@ -91,7 +109,8 @@ function renderCore(x, y, z) {
   var t = 0
   if (bandSoftness > 0) {
     t = smoothstep(split - bandSoftness, split + bandSoftness, height)
-  } else if (height > split) {
+    if (centerBlue && height >= split) t = 1
+  } else if (height > split || (centerBlue && height == split)) {
     t = 1
   }
 
@@ -138,7 +157,7 @@ export function beforeRender(delta) {
 
 // 1D fallback for setups without map coordinates
 export function render(index) {
-  var x = index / pixelCount
+  var x = (index + 0.5) / pixelCount
   renderCore(x, 0, 0)
 }
 
