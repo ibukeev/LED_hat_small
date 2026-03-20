@@ -15,14 +15,12 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
   - Low (kick): full block hits.
   - Mid (snare/clap): block selection rotation.
   - High (hat): edge crackle/flicker.
-- Key controls:
-  - `Intensity`
-  - `BlockCount`
-  - `StrobeLength`
-  - `Crackle`
-  - `AccentColor`
+- Key controls (minimal v0.1):
+  - `Level`
+  - `Reactivity`
+  - `Color`
 - Signature moment: periodic blackout then full-white slam.
-- Status: Candidate
+- Status: Active (v0.1 minimal in testing)
 
 ### 2) Tunnel Scanner
 - Concept: single scanning beam with trails and spark artifacts.
@@ -141,3 +139,28 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
 - Increase perceived kick separation without raising noise floor.
 - Option A: stronger kick flash contrast.
 - Option B: temporary hold/freeze of beam position on kick to make hits more legible.
+
+## Bunker Strobe Grid Iteration Notes
+
+### Implementation
+- Pattern file: `firmware/patterns/techno/bunker-strobe-grid.pe`
+- Goal: very minimal baseline for fast tuning.
+- Uses Sensor Expansion Board audio vars:
+  - `frequencyData[32]`
+  - `energyAverage`
+
+### Current Behavior (v0.1)
+- 8 virtual block columns around hat.
+- Low band controls block activation density.
+- Mid band adds alternating checker/step structure.
+- High band adds sparse shimmer/random spark enables.
+- Absolute `energyAverage` gate controls overall punch.
+
+### Controls (minimal)
+- `Level` (overall brightness)
+- `Reactivity` (sensitivity and gate window)
+- `Color` (hue)
+
+### Why Minimal First
+- Isolate audio behavior before adding style complexity.
+- Keep only controls needed to answer: "does this react clearly to music?"

@@ -1,0 +1,115 @@
+// Pattern: Bunker Strobe Grid (Minimal)
+// Description: Hard block strobes that react to kick/mid/high with minimal controls.
+// Version: 0.1
+
+// Minimal UI controls
+export var level = 0.8
+export var reactivity = 0.75
+export var colorHue = 0.0 // 0=red default for bunker look
+
+// Sensor Expansion Board audio variables
+export var frequencyData = array(32)
+export var energyAverage = -1
+
+var low = 0
+var mid = 0
+var high = 0
+var energy = 0
+var t = 0
+
+var lowPeak = 0.01
+var midPeak = 0.01
+var highPeak = 0.01
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+function hash1(x) {
+  return frac(sin(x * 91.7) * 43758.5453)
+}
+
+function updateAudio() {
+  var fl = 0
+  var fm = 0
+  var fh = 0
+
+  if (energyAverage >= 0) {
+    var lowRaw = frequencyData[1] + frequencyData[2] + frequencyData[3] + frequencyData[4]
+    var midRaw = frequencyData[7] + frequencyData[8] + frequencyData[9] + frequencyData[10] + frequencyData[11]
+    var highRaw = frequencyData[20] + frequencyData[21] + frequencyData[22] + frequencyData[23] + frequencyData[24] + frequencyData[25] + frequencyData[26] + frequencyData[27] + frequencyData[28] + frequencyData[29]
+
+    lowPeak = max(lowPeak * 0.992, lowRaw)
+    midPeak = max(midPeak * 0.992, midRaw)
+    highPeak = max(highPeak * 0.992, highRaw)
+
+    fl = clamp01((lowRaw / max(0.00001, lowPeak)) * (0.9 + 2.0 * reactivity))
+    fm = clamp01((midRaw / max(0.00001, midPeak)) * (0.8 + 1.6 * reactivity))
+    fh = clamp01((highRaw / max(0.00001, highPeak)) * (0.6 + 1.2 * reactivity))
+
+    // Uses your measured range: idle ~0.0005, music ~0.01
+    var floor = 0.0007 + (1 - reactivity) * 0.002
+    var ceil = 0.008 + (1 - reactivity) * 0.015
+    energy = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
+    energy = pow(energy, 0.85)
+  } else {
+    energy = 0
+  }
+
+  low = low * 0.65 + fl * 0.35
+  mid = mid * 0.72 + fm * 0.28
+  high = high * 0.68 + fh * 0.32
+}
+
+function renderCore(x, y, z) {
+  // 8 virtual columns around the hat for a block/grid look.
+  var col = floor(x * 8)
+  var step = floor(t * (2 + 10 * reactivity))
+
+  // Deterministic pseudo-random block enable per step.
+  var p = hash1(col + step * 17.0)
+  var on = 0
+  if (p < (0.15 + 0.70 * low)) on = 1
+
+  // Mid adds alternating pattern structure.
+  var alt = floor(col + step) % 2
+  if (mid > 0.45 && alt == 1) on = 1
+
+  // High adds brief shimmer chance.
+  if (high > 0.55 && hash1(col * 3.1 + t * 27.0) > 0.92) on = 1
+
+  // Kick/energy punch.
+  var v = 0
+  if (on) v = 0.18 + 0.82 * low
+  v += energy * (0.20 + 0.80 * low)
+  v = clamp01(v * level)
+
+  // High saturation, bunker style.
+  hsv(colorHue, 0.95, v)
+}
+
+export function beforeRender(delta) {
+  t += delta / 1000
+  updateAudio()
+}
+
+export function render(index) {
+  var x = (index + 0.5) / pixelCount
+  renderCore(x, 0, 0)
+}
+
+export function render2D(index, x, y) {
+  renderCore(x, y, 0)
+}
+
+export function render3D(index, x, y, z) {
+  var x1d = (index + 0.5) / pixelCount
+  renderCore(x1d, y, z)
+}
+
+// Minimal controls for first-pass testing
+export function sliderLevel(v) { level = 0.1 + v * 0.9 }
+export function sliderReactivity(v) { reactivity = v }
+export function sliderColor(v) { colorHue = v }
