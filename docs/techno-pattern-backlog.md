@@ -30,14 +30,11 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
   - Low: widen/brighten beam.
   - Mid: add trailing echoes.
   - High: spark noise around beam.
-- Key controls:
-  - `SweepSpeed`
-  - `BeamWidth`
-  - `TrailDecay`
-  - `Jitter`
-  - `AccentColor`
+- Key controls (current):
+  - `Level`
+  - `Reactivity`
 - Signature moment: beam freeze on peak, then double-speed release.
-- Status: Candidate
+- Status: Active (v0.3 in testing)
 
 ### 3) Riot Pulse
 - Concept: aggressive center-out and edge-in shockwaves.
@@ -90,3 +87,57 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
   - core audio mapping,
   - 5-8 controls in Pixelblaze UI,
   - safe defaults (no crash-prone parameter ranges).
+
+## Tunnel Scanner Iteration Notes
+
+### Implementation Path
+- Pattern file created at: `firmware/patterns/techno/tunnel-scanner.pe`.
+- Kept compatibility entry points:
+  - `beforeRender(delta)`
+  - `render(index)`
+  - `render2D(index, x, y)`
+  - `render3D(index, x, y, z)`
+- Removed synthetic/no-audio fallback after testing to isolate true reactivity.
+
+### What Changed (Recent)
+- Switched from light-sensor delta reactivity to Sensor Expansion Board audio variables:
+  - `frequencyData[32]`
+  - `energyAverage`
+  - `maxFrequency`
+  - `maxFrequencyMagnitude`
+- Added absolute energy gating tuned to measured values:
+  - idle: `energyAverage ~0.0005`
+  - music: `energyAverage ~0.01`
+  - pattern defaults: `energyFloor=0.0012`, `energyCeil=0.012`
+- Reduced UI to minimal controls:
+  - `Level` for brightness
+  - `Reactivity` macro for sensitivity/behavior
+- Added bass onset detector (`kick`) for punchier kick flashes:
+  - rising-edge detection from low band
+  - short decay flash envelope
+  - scanner speed spike on kick
+- Lowered onset threshold to trigger more easily with small speaker:
+  - `onset > 0.07` -> `onset > 0.045`
+
+### Current Defaults (v0.3)
+- `intensity=0.8`
+- `darknessFloor=0.0`
+- `sweepSpeed=0.65`
+- `beamWidth=0.14`
+- `trailDecay=0.42`
+- `kickBoost=2.1`
+- `sparkAmount=0.34`
+- `audioGain=1.8`
+- `energyFloor=0.0012`
+- `energyCeil=0.012`
+- `paletteMode=1` (acid green)
+
+### What We Learned
+- The pattern can look non-reactive if using `light` sensor instead of true audio vars.
+- Absolute gating performs better than normalized-only gating for this hardware/speaker setup.
+- Minimal controls improve test clarity during iteration.
+
+### Next Iteration Focus
+- Increase perceived kick separation without raising noise floor.
+- Option A: stronger kick flash contrast.
+- Option B: temporary hold/freeze of beam position on kick to make hits more legible.
