@@ -1,0 +1,59 @@
+// Pattern: Mapping Row Test
+// Description: Static bottom-up row fill for mapping verification.
+// Version: 0.1
+
+var ROWS = 7
+
+// Controls
+export var rowsLit = 0          // 0..7
+export var colorHue = 0.55
+export var outputLevel = 0.8
+export var flipVertical = 0     // 0=normal, 1=invert
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+function normHeight(h) {
+  var n = h
+  // Accept either 0..1 or -1..1 style coordinates.
+  if (h < 0 || h > 1) n = h * 0.5 + 0.5
+  n = clamp01(n)
+  if (flipVertical > 0.5) n = 1 - n
+  return n
+}
+
+function renderCore(h) {
+  var litFrac = rowsLit / ROWS
+  var v = h <= litFrac ? outputLevel : 0
+  hsv(colorHue, 1, v)
+}
+
+export function render(index) {
+  // 1D fallback assumes column-major wiring with 7 rows.
+  var row = index % ROWS
+  var h = row / max(1, ROWS - 1)
+  h = normHeight(h)
+  renderCore(h)
+}
+
+export function render2D(index, x, y) {
+  var h = normHeight(y)
+  renderCore(h)
+}
+
+export function render3D(index, x, y, z) {
+  var h = normHeight(z)
+  renderCore(h)
+}
+
+// UI sliders
+export function sliderRowsLit(v) {
+  rowsLit = floor(v * (ROWS + 0.999))
+  if (rowsLit > ROWS) rowsLit = ROWS
+}
+export function sliderColor(v) { colorHue = v }
+export function sliderOutputLevel(v) { outputLevel = 0.05 + v * 0.95 }
+export function sliderFlipVertical(v) { flipVertical = v >= 0.5 ? 1 : 0 }
