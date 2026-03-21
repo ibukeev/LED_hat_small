@@ -16,8 +16,8 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
   - Mid (snare/clap): block selection rotation.
   - High (hat): edge crackle/flicker.
 - Key controls (minimal v0.1):
-  - `Level`
-  - `Reactivity`
+  - `OutputLevel`
+  - `InputSensitivity`
   - `Color`
 - Signature moment: periodic blackout then full-white slam.
 - Status: Active (v0.1 minimal in testing)
@@ -29,8 +29,8 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
   - Mid: add trailing echoes.
   - High: spark noise around beam.
 - Key controls (current):
-  - `Level`
-  - `Reactivity`
+  - `OutputLevel`
+  - `InputSensitivity`
 - Signature moment: beam freeze on peak, then double-speed release.
 - Status: Active (v0.3 in testing)
 
@@ -71,8 +71,8 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
   - Energy: controls strike intensity and width.
   - Mid/high: intentionally minimized in v0.1 for clarity.
 - Key controls (minimal v0.1):
-  - `Level`
-  - `Reactivity`
+  - `OutputLevel`
+  - `InputSensitivity`
   - `Color`
 - Signature moment: short white clip flash followed by fading random bolt lines.
 - Status: Active (v0.1 minimal in testing)
@@ -121,8 +121,8 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
   - music: `energyAverage ~0.01`
   - pattern defaults: `energyFloor=0.0012`, `energyCeil=0.012`
 - Reduced UI to minimal controls:
-  - `Level` for brightness
-  - `Reactivity` macro for sensitivity/behavior
+  - `OutputLevel` for brightness
+  - `InputSensitivity` macro for sensitivity/behavior
 - Added bass onset detector (`kick`) for punchier kick flashes:
   - rising-edge detection from low band
   - short decay flash envelope
@@ -170,8 +170,8 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
 - Absolute `energyAverage` gate controls overall punch.
 
 ### Controls (minimal)
-- `Level` (overall brightness)
-- `Reactivity` (sensitivity and gate window)
+- `OutputLevel` (overall brightness)
+- `InputSensitivity` (sensitivity and gate window)
 - `Color` (hue)
 
 ### Why Minimal First

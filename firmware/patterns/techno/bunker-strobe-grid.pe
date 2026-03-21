@@ -3,8 +3,8 @@
 // Version: 0.1
 
 // Minimal UI controls
-export var level = 0.8
-export var reactivity = 0.75
+export var outputLevel = 0.8
+export var inputSensitivity = 0.75
 export var colorHue = 0.0 // 0=red default for bunker look
 
 // Sensor Expansion Board audio variables
@@ -50,13 +50,13 @@ function updateAudio() {
     midPeak = max(midPeak * 0.996, midRaw)
     highPeak = max(highPeak * 0.996, highRaw)
 
-    fl = clamp01((lowRaw / max(0.00001, lowPeak)) * (1.1 + 2.6 * reactivity))
-    fm = clamp01((midRaw / max(0.00001, midPeak)) * (0.8 + 1.6 * reactivity))
-    fh = clamp01((highRaw / max(0.00001, highPeak)) * (0.6 + 1.2 * reactivity))
+    fl = clamp01((lowRaw / max(0.00001, lowPeak)) * (1.1 + 2.6 * inputSensitivity))
+    fm = clamp01((midRaw / max(0.00001, midPeak)) * (0.8 + 1.6 * inputSensitivity))
+    fh = clamp01((highRaw / max(0.00001, highPeak)) * (0.6 + 1.2 * inputSensitivity))
 
     // Uses your measured range: idle ~0.0005, music ~0.01
-    var floor = 0.0007 + (1 - reactivity) * 0.002
-    var ceil = 0.008 + (1 - reactivity) * 0.015
+    var floor = 0.0007 + (1 - inputSensitivity) * 0.002
+    var ceil = 0.008 + (1 - inputSensitivity) * 0.015
     energy = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
     energy = pow(energy, 0.85)
   } else {
@@ -70,7 +70,7 @@ function updateAudio() {
 
   // Kick onset detector for clear rhythm lock.
   var onset = low - prevLow
-  var thresh = 0.028 + (1 - reactivity) * 0.045
+  var thresh = 0.028 + (1 - inputSensitivity) * 0.045
   if (onset > thresh && energy > 0.08) {
     kickPulse = 1
     kickClip = 1
@@ -110,7 +110,7 @@ function renderCore(x, y, z) {
   if (on) v = 0.14 + 0.86 * low
   v += energy * (0.20 + 0.80 * low)
   v += kickPulse * (0.55 + 0.35 * low)
-  v = clamp01(v * level)
+  v = clamp01(v * outputLevel)
 
   // Very short hard-clip flash for unmistakable kick hits.
   if (kickClip > 0.35) {
@@ -142,6 +142,6 @@ export function render3D(index, x, y, z) {
 }
 
 // Minimal controls for first-pass testing
-export function sliderLevel(v) { level = 0.1 + v * 0.9 }
-export function sliderReactivity(v) { reactivity = v }
+export function sliderOutputLevel(v) { outputLevel = 0.1 + v * 0.9 }
+export function sliderInputSensitivity(v) { inputSensitivity = v }
 export function sliderColor(v) { colorHue = v }

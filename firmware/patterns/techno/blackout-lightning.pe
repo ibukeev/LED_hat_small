@@ -4,7 +4,7 @@
 
 // Minimal controls
 export var level = 0.9
-export var reactivity = 0.8
+export var inputSensitivity = 0.8
 export var colorHue = 0.62 // blue-white default
 
 // Sensor Expansion Board audio vars
@@ -40,8 +40,8 @@ function updateAudio() {
     lowPeak = max(lowPeak * 0.997, lowBand)
 
     // Absolute gate tuned for your measured range.
-    var floor = 0.0007 + (1 - reactivity) * 0.0025
-    var ceil = 0.008 + (1 - reactivity) * 0.016
+    var floor = 0.0007 + (1 - inputSensitivity) * 0.0025
+    var ceil = 0.008 + (1 - inputSensitivity) * 0.016
     energy = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
     energy = pow(energy, 0.85)
   } else {
@@ -49,11 +49,11 @@ function updateAudio() {
   }
 
   var prevLow = low
-  low = low * 0.68 + clamp01((lowBand / max(0.00001, lowPeak)) * (1.0 + 2.6 * reactivity)) * 0.32
+  low = low * 0.68 + clamp01((lowBand / max(0.00001, lowPeak)) * (1.0 + 2.6 * inputSensitivity)) * 0.32
 
   // Kick onset => spawn new lightning bolts.
   var onset = low - prevLow
-  var thresh = 0.03 + (1 - reactivity) * 0.05
+  var thresh = 0.03 + (1 - inputSensitivity) * 0.05
   if (onset > thresh && energy > 0.08) {
     boltA = hash1(t * 23.0 + onset * 11.0)
     boltB = hash1(t * 31.0 + onset * 7.0)
@@ -72,7 +72,8 @@ function renderCore(x, y, z) {
 
   // White kick flash for 1-2 frames.
   if (flash > 0.35) {
-    rgb(level, level, level)
+    // Keep it bright but slightly tinted so color control remains visible.
+    hsv(colorHue, 0.22, level)
     return
   }
 
@@ -87,7 +88,7 @@ function renderCore(x, y, z) {
 
   // Keep non-hit time near black.
   v = clamp01(v * level)
-  hsv(colorHue, 0.25, v)
+  hsv(colorHue, 0.95, v)
 }
 
 export function beforeRender(delta) {
@@ -110,6 +111,6 @@ export function render3D(index, x, y, z) {
 }
 
 // Minimal UI
-export function sliderLevel(v) { level = 0.1 + v * 0.9 }
-export function sliderReactivity(v) { reactivity = v }
+export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
+export function sliderInputSensitivity(v) { inputSensitivity = v }
 export function sliderColor(v) { colorHue = v }

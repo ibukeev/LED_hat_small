@@ -170,11 +170,11 @@ export function render3D(index, x, y, z) {
 }
 
 // Pixelblaze UI controls: minimal set for fast testing
-export function sliderLevel(v) {
+export function sliderOutputLevel(v) {
   intensity = 0.15 + v * 0.85
 }
 
-export function sliderReactivity(v) {
+export function sliderInputSensitivity(v) {
   audioGain = 0.8 + v * 2.8
   energyFloor = 0.0004 + (1 - v) * 0.0026
   energyCeil = 0.006 + (1 - v) * 0.018
