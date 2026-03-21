@@ -117,11 +117,19 @@ function renderCore(x, y, z) {
 
   var bar = colValue[col]
   var yy = normalizeHeight(y)
-  var rowEps = 0.5 / max(1, ROWS - 1)
+  var row = floor(yy * ROWS)
+  if (row >= ROWS) row = ROWS - 1
+
+  // Quantize to physical rows so low levels still light row 1 reliably.
+  var litRows = floor(bar * ROWS + 0.0001)
+  if (bar > 0.02 && litRows < 1) litRows = 1
+  if (litRows > ROWS) litRows = ROWS
+
   var v = 0
-  if (yy <= bar + rowEps) {
-    // Bright near bar top for a stronger equalizer look.
-    var topBoost = 0.65 + 0.35 * clamp01((yy + 0.001) / max(0.05, bar))
+  if (row < litRows) {
+    // Bright near the top of currently lit rows.
+    var topPos = (row + 1) / max(1, litRows)
+    var topBoost = 0.65 + 0.35 * topPos
     v = bar * topBoost
   }
 
