@@ -1,0 +1,152 @@
+// Pattern: Machine Fault (Minimal)
+// Description: Dim stable baseline with abrupt fault/brownout bursts on rhythm hits.
+// Version: 0.1
+
+// Minimal controls
+export var outputLevel = 0.75
+export var inputSensitivity = 0.78
+export var colorHue = 0.58 // cold electric blue
+
+// Sensor Expansion Board audio vars
+export var frequencyData = array(32)
+export var energyAverage = -1
+
+var t = 0
+var low = 0
+var mid = 0
+var high = 0
+var energy = 0
+
+var lowPeak = 0.01
+var midPeak = 0.01
+var highPeak = 0.01
+
+// Fault engine states
+var faultBurst = 0
+var brownout = 0
+var desync = 0
+var laneSeed = 0
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+function hash1(x) {
+  return frac(sin(x * 93.173) * 43758.5453)
+}
+
+function updateAudio() {
+  var fl = 0
+  var fm = 0
+  var fh = 0
+
+  if (energyAverage >= 0) {
+    var lowRaw = frequencyData[1] + frequencyData[2] + frequencyData[3] + frequencyData[4]
+    var midRaw = frequencyData[7] + frequencyData[8] + frequencyData[9] + frequencyData[10] + frequencyData[11]
+    var highRaw = frequencyData[20] + frequencyData[21] + frequencyData[22] + frequencyData[23] + frequencyData[24] + frequencyData[25] + frequencyData[26] + frequencyData[27] + frequencyData[28] + frequencyData[29]
+
+    lowPeak = max(lowPeak * 0.996, lowRaw)
+    midPeak = max(midPeak * 0.996, midRaw)
+    highPeak = max(highPeak * 0.996, highRaw)
+
+    fl = clamp01((lowRaw / max(0.00001, lowPeak)) * (0.95 + 2.4 * inputSensitivity))
+    fm = clamp01((midRaw / max(0.00001, midPeak)) * (0.75 + 1.9 * inputSensitivity))
+    fh = clamp01((highRaw / max(0.00001, highPeak)) * (0.6 + 1.2 * inputSensitivity))
+
+    var floor = 0.0007 + (1 - inputSensitivity) * 0.0022
+    var ceil = 0.008 + (1 - inputSensitivity) * 0.016
+    energy = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
+    energy = pow(energy, 0.85)
+  } else {
+    energy = 0
+  }
+
+  var prevLow = low
+  var prevMid = mid
+
+  low = low * 0.68 + fl * 0.32
+  mid = mid * 0.72 + fm * 0.28
+  high = high * 0.74 + fh * 0.26
+
+  // Kick onset: brownout dip then fault burst rebound.
+  var lowOnset = low - prevLow
+  var lowThresh = 0.028 + (1 - inputSensitivity) * 0.045
+  if (lowOnset > lowThresh && energy > 0.08) {
+    brownout = 1
+    faultBurst = max(faultBurst, 0.55 + 0.45 * low)
+    laneSeed = floor(t * 1000)
+  } else {
+    brownout *= 0.78
+  }
+
+  // Mid onset: desync slices.
+  var midOnset = mid - prevMid
+  var midThresh = 0.026 + (1 - inputSensitivity) * 0.040
+  if (midOnset > midThresh && energy > 0.06) {
+    desync = max(desync, 0.5 + 0.4 * mid)
+  } else {
+    desync *= 0.86
+  }
+
+  faultBurst *= 0.88
+}
+
+function renderCore(x, y, z) {
+  // Base machine hum: dim, structured, mostly stable.
+  var lane = floor(x * 8)
+  var hum = 0.05 + 0.05 * (sin((x * 6.0 + t * 0.35) * PI * 2) * 0.5 + 0.5)
+
+  // Brownout on kick: pull output down briefly.
+  var brown = 1 - 0.92 * brownout
+
+  // Fault burst: random lane spikes.
+  var lanePulse = 0
+  var p = hash1(lane + laneSeed * 0.013 + floor(t * 35))
+  if (p > (0.82 - 0.45 * faultBurst)) {
+    lanePulse = faultBurst
+  }
+
+  // Desync: odd/even lane contrast offset.
+  var odd = lane % 2
+  var ds = desync * (odd ? 1 : 0.35)
+
+  // High band adds short gritty crackle.
+  var crackle = 0
+  if (hash1(x * 131 + t * 67) > 0.94) crackle = high * 0.25
+
+  var v = hum * brown
+  v += lanePulse * (0.25 + 0.75 * energy)
+  v += ds * 0.28
+  v += crackle
+  v = clamp01(v * outputLevel)
+
+  // Slight desaturation at low energy keeps industrial feel.
+  var sat = 0.55 + 0.40 * energy
+  hsv(colorHue, sat, v)
+}
+
+export function beforeRender(delta) {
+  t += delta / 1000
+  updateAudio()
+}
+
+export function render(index) {
+  var x = (index + 0.5) / pixelCount
+  renderCore(x, 0, 0)
+}
+
+export function render2D(index, x, y) {
+  renderCore(x, y, 0)
+}
+
+export function render3D(index, x, y, z) {
+  var x1d = (index + 0.5) / pixelCount
+  renderCore(x1d, y, z)
+}
+
+// Minimal UI
+export function sliderOutputLevel(v) { outputLevel = 0.1 + v * 0.9 }
+export function sliderInputSensitivity(v) { inputSensitivity = v }
+export function sliderColor(v) { colorHue = v }
