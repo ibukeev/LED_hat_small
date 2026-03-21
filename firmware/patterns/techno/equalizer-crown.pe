@@ -6,6 +6,7 @@
 export var outputLevel = 0.85
 export var inputSensitivity = 0.8
 export var colorHue = 0.62 // cool blue default
+export var flipVertical = 1
 
 // Sensor Expansion Board audio vars
 export var frequencyData = array(32)
@@ -31,8 +32,11 @@ function lerp(a, b, t) {
 function normalizeHeight(h) {
   // Native expected range is 0..1 (bottom->top).
   // If mapper supplies centered coordinates (-1..1), remap to 0..1.
-  if (h < 0 || h > 1) return clamp01(h * 0.5 + 0.5)
-  return clamp01(h)
+  var n = h
+  if (h < 0 || h > 1) n = h * 0.5 + 0.5
+  n = clamp01(n)
+  if (flipVertical > 0.5) n = 1 - n
+  return n
 }
 
 function updateAudioColumns() {
@@ -117,3 +121,4 @@ export function render3D(index, x, y, z) {
 export function sliderOutputLevel(v) { outputLevel = 0.1 + v * 0.9 }
 export function sliderInputSensitivity(v) { inputSensitivity = v }
 export function sliderColor(v) { colorHue = v }
+export function sliderFlipVertical(v) { flipVertical = v >= 0.5 ? 1 : 0 }
