@@ -18,6 +18,9 @@ var ROWS = 7
 var energy = 0
 var colValue = array(16)
 var colPeak = array(16)
+var bandLo = array(16)
+var bandHi = array(16)
+var bandsReady = 0
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -39,6 +42,26 @@ function normalizeHeight(h) {
   return n
 }
 
+function initBands() {
+  if (bandsReady) return
+
+  // Fixed band groups across 12 columns (low -> high).
+  bandLo[0] = 1;  bandHi[0] = 1
+  bandLo[1] = 2;  bandHi[1] = 2
+  bandLo[2] = 3;  bandHi[2] = 3
+  bandLo[3] = 4;  bandHi[3] = 4
+  bandLo[4] = 5;  bandHi[4] = 6
+  bandLo[5] = 7;  bandHi[5] = 8
+  bandLo[6] = 9;  bandHi[6] = 10
+  bandLo[7] = 11; bandHi[7] = 13
+  bandLo[8] = 14; bandHi[8] = 16
+  bandLo[9] = 17; bandHi[9] = 20
+  bandLo[10] = 21; bandHi[10] = 25
+  bandLo[11] = 26; bandHi[11] = 31
+
+  bandsReady = 1
+}
+
 function updateAudioColumns() {
   var gate = 0
   if (energyAverage >= 0) {
@@ -53,22 +76,36 @@ function updateAudioColumns() {
   // Peak decay: lower sensitivity -> faster decay (less sticky bars).
   var peakDecay = 0.985 + inputSensitivity * 0.012
 
+  var spectrumSum = 0.00001
+  var rawBand = array(16)
+
   for (var c = 0; c < COLS; c++) {
-    // Slightly log-ish mapping so low frequencies get more space.
-    var u = c / max(1, COLS - 1)
-    var bi = 1 + floor(pow(u, 1.9) * 30)
-    var b0 = max(1, bi - 1)
-    var b1 = bi
-    var b2 = min(31, bi + 1)
+    var lo = bandLo[c]
+    var hi = bandHi[c]
+    var raw = 0
+    var count = hi - lo + 1
+    for (var b = lo; b <= hi; b++) raw += frequencyData[b]
+    raw /= max(1, count)
 
-    // Weighted 3-bin sample per column.
-    var raw = frequencyData[b0] * 0.24 + frequencyData[b1] * 0.58 + frequencyData[b2] * 0.18
+    rawBand[c] = raw
+    spectrumSum += raw
+  }
 
+  for (c = 0; c < COLS; c++) {
+    var raw = rawBand[c]
+
+    // Local normalization keeps each band usable.
     colPeak[c] = max(colPeak[c] * peakDecay, raw)
     var norm = raw / max(0.00001, colPeak[c])
 
-    var gain = 0.7 + inputSensitivity * 2.6
-    var target = clamp01(norm * gain) * energy
+    // Spectral-share term preserves differences between columns.
+    var share = (raw / spectrumSum) * COLS
+
+    var gain = 0.6 + inputSensitivity * 2.2
+    var localTerm = clamp01(norm * gain)
+    var shareTerm = clamp01(share * (0.55 + inputSensitivity * 0.65))
+
+    var target = clamp01(localTerm * 0.58 + shareTerm * 0.42) * energy
 
     // Fast attack, moderate release.
     colValue[c] = lerp(colValue[c], target, 0.38)
@@ -94,6 +131,7 @@ function renderCore(x, y, z) {
 }
 
 export function beforeRender(delta) {
+  initBands()
   updateAudioColumns()
 }
 
