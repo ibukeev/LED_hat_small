@@ -133,6 +133,12 @@ function renderCore(x, y, z) {
     v = bar * topBoost
   }
 
+  // Keep bottom row always on as a stable baseline.
+  if (row == 0) {
+    var base = 0.12 + 0.10 * energy
+    if (v < base) v = base
+  }
+
   v = clamp01(v * outputLevel)
   hsv(colorHue, 0.95, v)
 }
