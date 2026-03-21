@@ -17,6 +17,7 @@ var high = 0
 var energy = 0
 var t = 0
 var kickPulse = 0
+var kickClip = 0
 var stepClock = 0
 var stepIndex = 0
 
@@ -72,9 +73,11 @@ function updateAudio() {
   var thresh = 0.028 + (1 - reactivity) * 0.045
   if (onset > thresh && energy > 0.08) {
     kickPulse = 1
+    kickClip = 1
     stepIndex += 1
   } else {
     kickPulse *= 0.82
+    kickClip *= 0.55
   }
 
   // Background sequencing between kicks (much slower than kick updates).
@@ -108,6 +111,12 @@ function renderCore(x, y, z) {
   v += energy * (0.20 + 0.80 * low)
   v += kickPulse * (0.55 + 0.35 * low)
   v = clamp01(v * level)
+
+  // Very short hard-clip flash for unmistakable kick hits.
+  if (kickClip > 0.35) {
+    hsv(0, 0, v > 0.4 ? 1 : 0)
+    return
+  }
 
   // High saturation, bunker style.
   hsv(colorHue, 0.95, v)
