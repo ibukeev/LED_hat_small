@@ -28,6 +28,13 @@ function lerp(a, b, t) {
   return a + (b - a) * t
 }
 
+function normalizeHeight(h) {
+  // Native expected range is 0..1 (bottom->top).
+  // If mapper supplies centered coordinates (-1..1), remap to 0..1.
+  if (h < 0 || h > 1) return clamp01(h * 0.5 + 0.5)
+  return clamp01(h)
+}
+
 function updateAudioColumns() {
   var gate = 0
   if (energyAverage >= 0) {
@@ -69,7 +76,7 @@ function renderCore(x, y, z) {
   if (col >= COLS) col = COLS - 1
 
   var bar = colValue[col]
-  var yy = clamp01(y)
+  var yy = normalizeHeight(y)
   var v = 0
   if (yy <= bar) {
     // Bright near bar top for a stronger equalizer look.
@@ -97,13 +104,13 @@ export function render(index) {
 
 export function render2D(index, x, y) {
   // 2D maps are assumed x=around, y=height.
-  renderCore(x, y, 0)
+  renderCore(x, normalizeHeight(y), 0)
 }
 
 export function render3D(index, x, y, z) {
   // Cylinder map: x/y define angle (column), z defines height.
   var angle = atan2(y, x) / (PI * 2) + 0.5
-  renderCore(angle, z, 0)
+  renderCore(angle, normalizeHeight(z), 0)
 }
 
 // Minimal UI
