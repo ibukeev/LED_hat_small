@@ -1,0 +1,115 @@
+// Pattern: Blackout Lightning (Minimal)
+// Description: Mostly black; short lightning/strobe strikes triggered by kick rhythm.
+// Version: 0.1
+
+// Minimal controls
+export var level = 0.9
+export var reactivity = 0.8
+export var colorHue = 0.62 // blue-white default
+
+// Sensor Expansion Board audio vars
+export var frequencyData = array(32)
+export var energyAverage = -1
+
+var t = 0
+var low = 0
+var energy = 0
+var lowPeak = 0.01
+
+// Lightning state
+var boltA = -1
+var boltB = -1
+var boltW = 0.08
+var boltPhase = 0
+var flash = 0
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+function hash1(x) {
+  return frac(sin(x * 127.1) * 43758.5453)
+}
+
+function updateAudio() {
+  var lowBand = 0
+  if (energyAverage >= 0) {
+    lowBand = frequencyData[1] + frequencyData[2] + frequencyData[3] + frequencyData[4]
+    lowPeak = max(lowPeak * 0.997, lowBand)
+
+    // Absolute gate tuned for your measured range.
+    var floor = 0.0007 + (1 - reactivity) * 0.0025
+    var ceil = 0.008 + (1 - reactivity) * 0.016
+    energy = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
+    energy = pow(energy, 0.85)
+  } else {
+    energy = 0
+  }
+
+  var prevLow = low
+  low = low * 0.68 + clamp01((lowBand / max(0.00001, lowPeak)) * (1.0 + 2.6 * reactivity)) * 0.32
+
+  // Kick onset => spawn new lightning bolts.
+  var onset = low - prevLow
+  var thresh = 0.03 + (1 - reactivity) * 0.05
+  if (onset > thresh && energy > 0.08) {
+    boltA = hash1(t * 23.0 + onset * 11.0)
+    boltB = hash1(t * 31.0 + onset * 7.0)
+    boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
+    boltPhase = 1
+    flash = 1
+  } else {
+    boltPhase *= 0.82
+    flash *= 0.7
+  }
+}
+
+function renderCore(x, y, z) {
+  // Very dark baseline.
+  var v = 0
+
+  // White kick flash for 1-2 frames.
+  if (flash > 0.35) {
+    rgb(level, level, level)
+    return
+  }
+
+  // Lightning stripes around random x positions on kick.
+  if (boltPhase > 0.02) {
+    var dA = abs(x - boltA)
+    var dB = abs(x - boltB)
+    var bA = exp(-pow(dA / max(0.01, boltW), 2))
+    var bB = exp(-pow(dB / max(0.01, boltW * 0.8), 2))
+    v = (bA + bB * 0.9) * boltPhase * (0.35 + 0.65 * low)
+  }
+
+  // Keep non-hit time near black.
+  v = clamp01(v * level)
+  hsv(colorHue, 0.25, v)
+}
+
+export function beforeRender(delta) {
+  t += delta / 1000
+  updateAudio()
+}
+
+export function render(index) {
+  var x = (index + 0.5) / pixelCount
+  renderCore(x, 0, 0)
+}
+
+export function render2D(index, x, y) {
+  renderCore(x, y, 0)
+}
+
+export function render3D(index, x, y, z) {
+  var x1d = (index + 0.5) / pixelCount
+  renderCore(x1d, y, z)
+}
+
+// Minimal UI
+export function sliderLevel(v) { level = 0.1 + v * 0.9 }
+export function sliderReactivity(v) { reactivity = v }
+export function sliderColor(v) { colorHue = v }

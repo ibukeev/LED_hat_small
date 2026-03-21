@@ -64,6 +64,19 @@ This document tracks sound-reactive pattern ideas for a techno/underground bunke
 - Signature moment: rare fault cascade then clean re-sync.
 - Status: Candidate
 
+### 5) Blackout Lightning
+- Concept: almost-black output with brief lightning/strobe strikes on kick.
+- Audio mapping:
+  - Low: kick onset triggers bolt spawn + flash.
+  - Energy: controls strike intensity and width.
+  - Mid/high: intentionally minimized in v0.1 for clarity.
+- Key controls (minimal v0.1):
+  - `Level`
+  - `Reactivity`
+  - `Color`
+- Signature moment: short white clip flash followed by fading random bolt lines.
+- Status: Active (v0.1 minimal in testing)
+
 ## Quick Evaluation Matrix (Draft)
 
 | Pattern | Aggression | Readability @ 7px height | Risk of Looking Messy |
