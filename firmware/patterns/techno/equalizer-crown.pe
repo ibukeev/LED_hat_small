@@ -38,8 +38,7 @@ function normalizeHeight(h) {
   var n = h
   if (h < 0 || h > 1) n = h * 0.5 + 0.5
   n = clamp01(n)
-  // Device-verified orientation: invert so bars grow from physical bottom.
-  return 1 - n
+  return n
 }
 
 function initBands() {
