@@ -18,6 +18,7 @@ var ROWS = 7
 var energy = 0
 var colValue = array(16)
 var colPeak = array(16)
+var colRaw = array(16)
 var bandLo = array(16)
 var bandHi = array(16)
 var bandsReady = 0
@@ -77,7 +78,6 @@ function updateAudioColumns() {
   var peakDecay = 0.985 + inputSensitivity * 0.012
 
   var spectrumSum = 0.00001
-  var rawBand = array(16)
 
   for (var c = 0; c < COLS; c++) {
     var lo = bandLo[c]
@@ -87,12 +87,12 @@ function updateAudioColumns() {
     for (var b = lo; b <= hi; b++) raw += frequencyData[b]
     raw /= max(1, count)
 
-    rawBand[c] = raw
+    colRaw[c] = raw
     spectrumSum += raw
   }
 
   for (c = 0; c < COLS; c++) {
-    var raw = rawBand[c]
+    var raw = colRaw[c]
 
     // Local normalization keeps each band usable.
     colPeak[c] = max(colPeak[c] * peakDecay, raw)
