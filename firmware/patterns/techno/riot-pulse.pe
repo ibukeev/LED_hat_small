@@ -1,6 +1,6 @@
 // Pattern: Riot Pulse (Minimal)
 // Description: Aggressive center-out and edge-in pulses locked to rhythm.
-// Version: 0.1
+// Version: 0.2
 
 // Minimal controls
 export var outputLevel = 0.85
@@ -92,31 +92,24 @@ function renderCore(x, y, z) {
   var d = abs(x - 0.5) * 2
   var v = 0
 
-  // Propagation speed scales with energy so hits feel more alive.
-  var speed = 0.05 + 0.09 * energy
-
   if (outPos >= 0) {
     var wOut = 0.08 + 0.18 * (1 - inputSensitivity)
     var pOut = exp(-pow((d - outPos) / wOut, 2))
     v += pOut * outAmp
-    outPos += speed
-    if (outPos > 1.2) outPos = -1
   }
 
   if (inPos >= 0) {
     var wIn = 0.08 + 0.16 * (1 - inputSensitivity)
     var pIn = exp(-pow((d - inPos) / wIn, 2))
     v += pIn * inAmp
-    inPos -= speed * 1.05
-    if (inPos < -0.2) inPos = -1
   }
 
   // High band adds subtle grain on top.
   var grain = sin((x * 67 + y * 19 + z * 13 + t * 18) * PI * 2) * 0.5 + 0.5
   if (grain > 0.90) v += high * 0.18
 
-  // Keep it dark between hits.
-  v = v * (0.10 + 1.25 * energy)
+  // Keep it dark between hits, but not invisible on small setups.
+  v = v * (0.24 + 1.45 * energy)
   v = clamp01(v * outputLevel)
 
   hsv(colorHue, 0.95, v)
@@ -125,6 +118,17 @@ function renderCore(x, y, z) {
 export function beforeRender(delta) {
   t += delta / 1000
   updateAudio()
+
+  // Advance pulse positions once per frame (not per pixel).
+  var speed = (0.05 + 0.09 * energy) * (delta / 16.67)
+  if (outPos >= 0) {
+    outPos += speed
+    if (outPos > 1.2) outPos = -1
+  }
+  if (inPos >= 0) {
+    inPos -= speed * 1.05
+    if (inPos < -0.2) inPos = -1
+  }
 }
 
 export function render(index) {
