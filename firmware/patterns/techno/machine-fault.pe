@@ -55,9 +55,9 @@ function updateAudio() {
     fm = clamp01((midRaw / max(0.00001, midPeak)) * (0.75 + 1.9 * inputSensitivity))
     fh = clamp01((highRaw / max(0.00001, highPeak)) * (0.6 + 1.2 * inputSensitivity))
 
-    var floor = 0.0007 + (1 - inputSensitivity) * 0.0022
-    var ceil = 0.008 + (1 - inputSensitivity) * 0.016
-    energy = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
+    var energyFloor = 0.0007 + (1 - inputSensitivity) * 0.0022
+    var energyCeil = 0.008 + (1 - inputSensitivity) * 0.016
+    energy = clamp01((energyAverage - energyFloor) / max(0.0001, energyCeil - energyFloor))
     energy = pow(energy, 0.85)
   } else {
     energy = 0

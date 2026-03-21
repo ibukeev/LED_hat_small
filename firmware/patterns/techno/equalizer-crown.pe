@@ -1,0 +1,109 @@
+// Pattern: Equalizer Crown (Minimal)
+// Description: Frequency bands mapped to columns around the hat with bar-height response.
+// Version: 0.1
+
+// Minimal controls
+export var outputLevel = 0.85
+export var inputSensitivity = 0.8
+export var colorHue = 0.62 // cool blue default
+
+// Sensor Expansion Board audio vars
+export var frequencyData = array(32)
+export var energyAverage = -1
+
+var COLS = 12
+var MAX_COLS = 16
+
+var energy = 0
+var colValue = array(16)
+var colPeak = array(16)
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t
+}
+
+function updateAudioColumns() {
+  var gate = 0
+  if (energyAverage >= 0) {
+    // Absolute gate tuned from your measured range.
+    var floor = 0.0007 + (1 - inputSensitivity) * 0.0022
+    var ceil = 0.008 + (1 - inputSensitivity) * 0.016
+    gate = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
+    gate = pow(gate, 0.85)
+  }
+  energy = gate
+
+  // Peak decay: lower sensitivity -> faster decay (less sticky bars).
+  var peakDecay = 0.985 + inputSensitivity * 0.012
+
+  for (var c = 0; c < COLS; c++) {
+    // Slightly log-ish mapping so low frequencies get more space.
+    var u = c / max(1, COLS - 1)
+    var bi = 1 + floor(pow(u, 1.9) * 30)
+    var b0 = max(1, bi - 1)
+    var b1 = bi
+    var b2 = min(31, bi + 1)
+
+    // Weighted 3-bin sample per column.
+    var raw = frequencyData[b0] * 0.24 + frequencyData[b1] * 0.58 + frequencyData[b2] * 0.18
+
+    colPeak[c] = max(colPeak[c] * peakDecay, raw)
+    var norm = raw / max(0.00001, colPeak[c])
+
+    var gain = 0.7 + inputSensitivity * 2.6
+    var target = clamp01(norm * gain) * energy
+
+    // Fast attack, moderate release.
+    colValue[c] = lerp(colValue[c], target, 0.38)
+  }
+}
+
+function renderCore(x, y, z) {
+  var cx = clamp01(x)
+  var col = floor(cx * COLS)
+  if (col >= COLS) col = COLS - 1
+
+  var bar = colValue[col]
+
+  // 2D/3D bar: y is treated as vertical position.
+  // On 1D fallback, y=0 so bars still show as brightness-only.
+  var yy = clamp01(y)
+  var v = 0
+  if (yy <= bar) {
+    // Bright near bar top for a stronger equalizer look.
+    var topBoost = 0.65 + 0.35 * clamp01((yy + 0.001) / max(0.05, bar))
+    v = bar * topBoost
+  }
+
+  v = clamp01(v * outputLevel)
+  hsv(colorHue, 0.95, v)
+}
+
+export function beforeRender(delta) {
+  updateAudioColumns()
+}
+
+export function render(index) {
+  var x = (index + 0.5) / pixelCount
+  renderCore(x, 0, 0)
+}
+
+export function render2D(index, x, y) {
+  renderCore(x, y, 0)
+}
+
+export function render3D(index, x, y, z) {
+  // Use mapped x/y when available for true bar heights.
+  renderCore(x, y, z)
+}
+
+// Minimal UI
+export function sliderOutputLevel(v) { outputLevel = 0.1 + v * 0.9 }
+export function sliderInputSensitivity(v) { inputSensitivity = v }
+export function sliderColor(v) { colorHue = v }
