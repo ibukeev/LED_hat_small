@@ -32,9 +32,9 @@ function updateAudioColumns() {
   var gate = 0
   if (energyAverage >= 0) {
     // Absolute gate tuned from your measured range.
-    var floor = 0.0007 + (1 - inputSensitivity) * 0.0022
-    var ceil = 0.008 + (1 - inputSensitivity) * 0.016
-    gate = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
+    var energyFloor = 0.0007 + (1 - inputSensitivity) * 0.0022
+    var energyCeil = 0.008 + (1 - inputSensitivity) * 0.016
+    gate = clamp01((energyAverage - energyFloor) / max(0.0001, energyCeil - energyFloor))
     gate = pow(gate, 0.85)
   }
   energy = gate
