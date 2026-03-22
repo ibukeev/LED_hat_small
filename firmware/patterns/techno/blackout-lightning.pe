@@ -12,6 +12,7 @@ var lastHitMs = -100000
 var nowMs = 0
 var minIntervalMs = 260
 var armed = 1
+var prevBass = 0
 
 // Fixed absolute kick thresholds. Tune in code only.
 var bassThreshold = 0.0012
@@ -32,13 +33,15 @@ export function beforeRender(delta) {
     var bodyBand = frequencyData[3] + frequencyData[4] + frequencyData[5]
     var bass = kickBand + bodyBand * 0.8
     var intervalOk = (nowMs - lastHitMs) >= minIntervalMs
+    var crossedUp = prevBass <= bassThreshold && bass > bassThreshold
     if (bass < rearmThreshold) armed = 1
 
-    if (armed && intervalOk && bass > bassThreshold) {
+    if (armed && intervalOk && crossedUp) {
       lastHitMs = nowMs
       blinkLeftMs = blinkMs
       armed = 0
     }
+    prevBass = bass
   }
 }
 
