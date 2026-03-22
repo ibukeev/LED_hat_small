@@ -3,10 +3,10 @@
 // Version: 0.1
 
 // Minimal controls
-export var level = 0.9
-export var inputGain = 0.8
-export var triggerSensitivity = 0.8
-export var colorHue = 0.62 // blue-white default
+var level = 0.9
+var inputGain = 0.8
+var triggerSensitivity = 0.8
+var colorHue = 0.62 // blue-white default
 
 // Sensor Expansion Board audio vars
 export var frequencyData = array(32)
