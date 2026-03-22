@@ -1,44 +1,30 @@
-// Pattern: Blackout Lightning (Minimal)
-// Description: Mostly black; short lightning/strobe strikes triggered by kick rhythm.
-// Version: 0.1
+// Pattern: Blackout Lightning
+// Description: Simple whole-hat kick flash with hold/drop envelope.
+// Version: 0.2
 
-// Minimal controls
 var level = 0.9
-var inputGain = 0.8
-var triggerSensitivity = 0.8
-var colorHue = 0.62 // blue-white default
-var colorSat = 0.95
+var inputGain = 0.35
+var sensitivity = 0.9
 var holdMs = 115
 var dropMs = 492
+var colorHue = 0.62
+var colorSat = 0.95
 
-// Sensor Expansion Board audio vars
-export var frequencyData = array(32)
-export var energyAverage = -1
-
-var t = 0
-var nowMs = 0
+var pulse = 0
+var pulseAgeMs = 99999
 var low = 0
-var lowRise = 0
-var energy = 0
-var kickPeak = 0.01
-var midPeak = 0.01
+var lowPeak = 0.01
 var highPeak = 0.01
+var lastHitMs = -100000
+var nowMs = 0
+var minIntervalMs = 260
 
-// Lightning state
-var boltA = -1
-var boltB = -1
-var boltW = 0.08
-var boltPhase = 0
-var hitAgeMs = 99999
-var retriggerMs = 0
-var triggerArmed = 1
-var beatIntervalMs = 470
-var lastKickMs = -1
 var blinkEvery = 1
 export var kickDivision = 1
 var kickCount = 0
-var reacquireHits = 0
-var minKickIntervalMs = 260
+
+export var frequencyData = array(32)
+export var energyAverage = -1
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -46,152 +32,51 @@ function clamp01(v) {
   return v
 }
 
-function hash1(x) {
-  return frac(sin(x * 127.1) * 43758.5453)
-}
+export function beforeRender(delta) {
+  nowMs += delta
+  pulseAgeMs += delta
 
-function clamp(v, lo, hi) {
-  if (v < lo) return lo
-  if (v > hi) return hi
-  return v
-}
-
-function hitEnv() {
-  if (lastKickMs < 0) return 0
-  if (hitAgeMs <= holdMs) return 1
-  if (hitAgeMs <= holdMs + dropMs) {
-    var t = (hitAgeMs - holdMs) / max(1, dropMs)
-    return 1 - t * t
-  }
-  return 0
-}
-
-function updateAudio() {
-  var kickBand = 0
-  var bodyBand = 0
-  var midBand = 0
-  var highBand = 0
-  var bassBand = 0
-  var midNorm = 0
-  var highNorm = 0
   if (energyAverage >= 0) {
-    kickBand = frequencyData[0] + frequencyData[1] + frequencyData[2]
-    bodyBand = frequencyData[3] + frequencyData[4] + frequencyData[5]
-    midBand = frequencyData[7] + frequencyData[8] + frequencyData[9] + frequencyData[10]
-    highBand = frequencyData[10] + frequencyData[11] + frequencyData[12] + frequencyData[13]
-    bassBand = kickBand + bodyBand * 1.0
-    kickPeak = max(kickPeak * 0.995, bassBand)
-    midPeak = max(midPeak * 0.995, midBand)
+    var kickBand = frequencyData[0] + frequencyData[1] + frequencyData[2]
+    var bodyBand = frequencyData[3] + frequencyData[4] + frequencyData[5]
+    var highBand = frequencyData[10] + frequencyData[11] + frequencyData[12] + frequencyData[13]
+
+    var bassBand = kickBand + bodyBand * 1.0
+    lowPeak = max(lowPeak * 0.995, bassBand)
     highPeak = max(highPeak * 0.995, highBand)
-    midNorm = midBand / max(0.00001, midPeak)
-    highNorm = highBand / max(0.00001, highPeak)
 
-    // Trigger sensitivity controls how easily audio clears the absolute gate.
-    var floor = 0.0007 + (1 - triggerSensitivity) * 0.0025
-    var ceil = 0.008 + (1 - triggerSensitivity) * 0.016
-    energy = clamp01((energyAverage - floor) / max(0.0001, ceil - floor))
-    energy = pow(energy, 0.85)
-  } else {
-    energy = 0
-  }
+    var prevLow = low
+    var lowNorm = bassBand / max(0.00001, lowPeak)
+    var highNorm = highBand / max(0.00001, highPeak)
+    var boosted = lowNorm * (0.6 + 1.8 * inputGain)
+    low = low * 0.72 + (boosted / (1 + boosted)) * 0.28
 
-  var prevLow = low
-  // Preserve transient headroom at high gain so kicks still create onsets.
-  var lowNorm = bassBand / max(0.00001, kickPeak)
-  var lowBoost = lowNorm * (0.7 + 1.8 * inputGain)
-  var lowShaped = lowBoost / (1 + lowBoost)
-  low = low * 0.68 + lowShaped * 0.32
+    var onset = low - prevLow
+    var energyGate = clamp01((energyAverage - 0.0007) / 0.01)
+    var onsetThresh = 0.018 + (1 - sensitivity) * 0.04
+    var shapeOk = lowNorm > 0.06 && highNorm < 1.0
+    var intervalOk = (nowMs - lastHitMs) >= minIntervalMs
 
-  // Kick onset => spawn new lightning bolts.
-  var onset = low - prevLow
-  var thresh = 0.03 + (1 - triggerSensitivity) * 0.05
-  var resetThresh = thresh * 0.35
-  lowRise = max(onset, lowRise * 0.72)
-  var dominance = bassBand / max(0.00005, midBand * 0.95 + highBand * 1.0 + bodyBand * 0.05)
-  var dominanceThresh = 0.5 - triggerSensitivity * 0.08
-  var separation = lowNorm - midNorm * 0.24 - highNorm * 0.72
-  var cymbalVeto = highNorm < 0.62 + lowNorm * 0.12
-  var envelopeReset = low < 0.58 || onset < resetThresh
-  if (envelopeReset) triggerArmed = 1
-
-  var peakReady = onset > thresh && onset >= lowRise * 0.9
-  var bodyPeakReady = onset > thresh * 0.58 && onset >= lowRise * 0.58
-  var deepKick = dominance > dominanceThresh && separation > -0.01
-  var bodyKick = bassBand / max(0.00005, highBand * 0.9 + midBand * 0.6) > 0.38 && separation > -0.18 && lowNorm > 0.06
-  var kickLike = deepKick || bodyKick
-  var gapMs = lastKickMs < 0 ? 9999 : nowMs - lastKickMs
-  var reacquiring = lastKickMs >= 0 && gapMs > max(900, beatIntervalMs * 1.8)
-  if (reacquiring) {
-    retriggerMs = 0
-    triggerArmed = 1
-    lowRise = min(lowRise, onset)
-  }
-  var reacquireKick = bodyPeakReady && energy > 0.03 && (dominance > dominanceThresh * 0.75 || bodyKick) && separation > -0.12 && cymbalVeto
-  var intervalOk = gapMs >= minKickIntervalMs
-
-  if (triggerArmed && retriggerMs <= 0 && intervalOk && (((peakReady && deepKick && energy > 0.04) || (bodyPeakReady && bodyKick && energy > 0.03)) && cymbalVeto || (reacquiring && reacquireHits < 2 && reacquireKick))) {
-    if (lastKickMs >= 0) {
-      var intervalMs = nowMs - lastKickMs
-      if (intervalMs > 220 && intervalMs < 800) {
-        beatIntervalMs = beatIntervalMs * 0.72 + intervalMs * 0.28
-      }
+    if (intervalOk && onset > onsetThresh && energyGate > 0.025 && shapeOk) {
+      lastHitMs = nowMs
+      kickCount += 1
+      if ((kickCount % blinkEvery) == 0) pulseAgeMs = 0
     }
-    lastKickMs = nowMs
-    reacquireHits = reacquiring ? reacquireHits + 1 : 0
-    kickCount += 1
-    var shouldBlink = (kickCount % blinkEvery) == 0
-    if (shouldBlink) {
-      boltA = hash1(t * 23.0 + onset * 11.0)
-      boltB = hash1(t * 31.0 + onset * 7.0)
-      boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
-      boltPhase = 1
-      hitAgeMs = 0
-    }
-    retriggerMs = clamp(beatIntervalMs * 0.24, 90, 170)
-    triggerArmed = 0
-    lowRise = 0
-  } else {
-    if (!reacquiring) reacquireHits = 0
-    boltPhase *= 0.97
   }
+
+  if (pulseAgeMs <= holdMs) pulse = 1
+  else if (pulseAgeMs <= holdMs + dropMs) {
+    var t = (pulseAgeMs - holdMs) / dropMs
+    pulse = 1 - t * t
+  } else pulse = 0
 }
 
 function renderCore(x, y, z) {
-  // Very dark baseline.
-  var v = 0
-  var env = hitEnv()
-
-  // Whole-hat kick envelope. Localized strike detail can sit on top of this.
-  if (env > 0.01) {
-    v = env
-  }
-
-  // Bring in stripe detail later so the main hit always reads as full-hat first.
-  if (boltPhase > 0.02 && env < 0.55) {
-    var dA = abs(x - boltA)
-    var dB = abs(x - boltB)
-    var bA = exp(-pow(dA / max(0.01, boltW), 2))
-    var bB = exp(-pow(dB / max(0.01, boltW * 0.8), 2))
-    var strike = (bA + bB * 0.9) * boltPhase * (0.35 + 0.65 * low)
-    if (strike > v) v = strike
-  }
-
-  // Keep non-hit time near black.
-  v = clamp01(v * level)
-  hsv(colorHue, colorSat, v)
-}
-
-export function beforeRender(delta) {
-  t += delta / 1000
-  nowMs += delta
-  hitAgeMs += delta
-  retriggerMs = max(0, retriggerMs - delta)
-  updateAudio()
+  hsv(colorHue, colorSat, pulse * level)
 }
 
 export function render(index) {
-  var x = (index + 0.5) / pixelCount
-  renderCore(x, 0, 0)
+  renderCore(0, 0, 0)
 }
 
 export function render2D(index, x, y) {
@@ -199,14 +84,12 @@ export function render2D(index, x, y) {
 }
 
 export function render3D(index, x, y, z) {
-  var x1d = (index + 0.5) / pixelCount
-  renderCore(x1d, y, z)
+  renderCore(x, y, z)
 }
 
-// Minimal UI
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
-export function sliderInputGain(v) { inputGain = v * (0.3 + 0.3 * v) }
-export function sliderTriggerSensitivity(v) { triggerSensitivity = 0.7 + v * 0.3 }
+export function sliderInputGain(v) { inputGain = 0.05 + v * 0.75 }
+export function sliderSensitivity(v) { sensitivity = 0.7 + v * 0.3 }
 export function sliderHold(v) { holdMs = 20 + v * 380 }
 export function sliderDrop(v) { dropMs = 60 + v * 540 }
 export function inputNumberKickDivision(v) {
