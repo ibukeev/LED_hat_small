@@ -88,7 +88,11 @@ function updateAudio() {
   if (envelopeReset) triggerArmed = 1
 
   var peakReady = onset > thresh && onset >= lowRise * 0.9
-  if (triggerArmed && retriggerMs <= 0 && peakReady && energy > 0.05 && dominance > dominanceThresh && separation > 0.02 && cymbalVeto) {
+  var deepKick = dominance > dominanceThresh && separation > 0.02
+  var bodyKick = bassBand / max(0.00005, highBand * 1.35 + midBand * 0.8) > 0.72 && separation > -0.04 && lowNorm > 0.24
+  var kickLike = deepKick || bodyKick
+
+  if (triggerArmed && retriggerMs <= 0 && peakReady && energy > 0.05 && kickLike && cymbalVeto) {
     boltA = hash1(t * 23.0 + onset * 11.0)
     boltB = hash1(t * 31.0 + onset * 7.0)
     boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
