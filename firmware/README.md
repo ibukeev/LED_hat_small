@@ -51,6 +51,11 @@ firmware/
 - Audio-reactive via Sensor Expansion Board
 - Exposed UI controls for output level, input gain, trigger sensitivity, and color
 
+### Fixed BPM Flash Test (`patterns/techno/fixed-bpm-flash-test.pe`)
+- Detector-free flash pattern for timing and envelope testing
+- Configurable BPM, beat division, release, color, and output level
+- Useful for validating live flash feel before tuning audio-reactive patterns
+
 ### Aurora (`patterns/general/aurora.pe`)
 - Northern lights effect
 - Smooth color transitions
