@@ -7,6 +7,7 @@ var level = 0.9
 var inputGain = 0.8
 var triggerSensitivity = 0.8
 var colorHue = 0.62 // blue-white default
+var colorSat = 0.95
 
 // Sensor Expansion Board audio vars
 export var frequencyData = array(32)
@@ -150,7 +151,7 @@ function renderCore(x, y, z) {
   // White kick flash for 1-2 frames.
   if (flash > 0.35) {
     // Keep it bright but slightly tinted so color control remains visible.
-    hsv(colorHue, 0.22, level)
+    hsv(colorHue, colorSat * 0.25, level)
     return
   }
 
@@ -165,7 +166,7 @@ function renderCore(x, y, z) {
 
   // Keep non-hit time near black.
   v = clamp01(v * level)
-  hsv(colorHue, 0.95, v)
+  hsv(colorHue, colorSat, v)
 }
 
 export function beforeRender(delta) {
@@ -199,4 +200,7 @@ export function inputNumberKickDivision(v) {
   else kickDivision = 4
   blinkEvery = kickDivision
 }
-export function sliderColor(v) { colorHue = v }
+export function hsvPickerColor(h, s, v) {
+  colorHue = h
+  colorSat = s
+}
