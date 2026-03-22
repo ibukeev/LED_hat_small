@@ -1,6 +1,6 @@
 // Pattern: Blackout Lightning
-// Description: Simple timed whole-hat blink every two seconds.
-// Version: 0.6
+// Description: Simple whole-hat blink on overall audio volume.
+// Version: 0.7
 
 var level = 0.9
 var colorHue = 0.62
@@ -8,19 +8,31 @@ var colorSat = 0.95
 
 var blinkMs = 90
 var blinkLeftMs = 0
-var elapsedMs = 0
-var flashMs = 2000
+var lastHitMs = -100000
+var nowMs = 0
+var minIntervalMs = 260
+var armed = 1
+var volumeThreshold = 0.0012
+var rearmThreshold = 0.0006
+
+export var energyAverage = -1
 
 export function beforeRender(delta) {
-  elapsedMs += delta
+  nowMs += delta
 
   if (blinkLeftMs > 0) {
     blinkLeftMs = max(0, blinkLeftMs - delta)
   }
 
-  while (elapsedMs >= flashMs) {
-    elapsedMs -= flashMs
-    blinkLeftMs = blinkMs
+  if (energyAverage >= 0) {
+    var intervalOk = (nowMs - lastHitMs) >= minIntervalMs
+    if (energyAverage < rearmThreshold) armed = 1
+
+    if (armed && intervalOk && energyAverage > volumeThreshold) {
+      lastHitMs = nowMs
+      blinkLeftMs = blinkMs
+      armed = 0
+    }
   }
 }
 
