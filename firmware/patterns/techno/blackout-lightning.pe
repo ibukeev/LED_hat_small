@@ -176,7 +176,7 @@ function renderCore(x, y, z) {
 
   // Hold/drop envelope provides a slower release behind the strike.
   if (env > 0.01) {
-    var tail = env * (0.12 + 0.28 * low)
+    var tail = env * (0.02 + 0.18 * low)
     if (tail > v) v = tail
   }
 
