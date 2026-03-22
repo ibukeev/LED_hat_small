@@ -33,6 +33,7 @@ var beatIntervalMs = 470
 var lastKickMs = -1
 var blinkEvery = 1
 var kickCount = 0
+var reacquireHits = 0
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -102,8 +103,16 @@ function updateAudio() {
   var deepKick = dominance > dominanceThresh && separation > 0.02
   var bodyKick = bassBand / max(0.00005, highBand * 1.35 + midBand * 0.8) > 0.72 && separation > -0.04 && lowNorm > 0.24
   var kickLike = deepKick || bodyKick
+  var gapMs = lastKickMs < 0 ? 9999 : nowMs - lastKickMs
+  var reacquiring = gapMs > max(900, beatIntervalMs * 1.8)
+  if (reacquiring) {
+    retriggerMs = 0
+    triggerArmed = 1
+    lowRise = min(lowRise, onset)
+  }
+  var reacquireKick = peakReady && energy > 0.035 && dominance > dominanceThresh * 0.82 && separation > -0.08 && cymbalVeto
 
-  if (triggerArmed && retriggerMs <= 0 && peakReady && energy > 0.05 && kickLike && cymbalVeto) {
+  if (triggerArmed && retriggerMs <= 0 && ((peakReady && energy > 0.05 && kickLike && cymbalVeto) || (reacquiring && reacquireHits < 2 && reacquireKick))) {
     if (lastKickMs >= 0) {
       var intervalMs = nowMs - lastKickMs
       if (intervalMs > 220 && intervalMs < 800) {
@@ -111,6 +120,7 @@ function updateAudio() {
       }
     }
     lastKickMs = nowMs
+    reacquireHits = reacquiring ? reacquireHits + 1 : 0
     kickCount += 1
     var shouldBlink = (kickCount % blinkEvery) == 0
     if (shouldBlink) {
@@ -124,6 +134,7 @@ function updateAudio() {
     triggerArmed = 0
     lowRise = 0
   } else {
+    if (!reacquiring) reacquireHits = 0
     boltPhase *= 0.82
     flash *= 0.7
   }
