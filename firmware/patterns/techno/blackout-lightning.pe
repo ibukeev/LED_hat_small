@@ -57,6 +57,7 @@ function clamp(v, lo, hi) {
 }
 
 function hitEnv() {
+  if (lastKickMs < 0) return 0
   if (hitAgeMs <= holdMs) return 1
   if (hitAgeMs <= holdMs + dropMs) {
     var t = (hitAgeMs - holdMs) / max(1, dropMs)
