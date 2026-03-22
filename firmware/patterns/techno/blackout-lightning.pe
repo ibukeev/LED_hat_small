@@ -1,6 +1,6 @@
 // Pattern: Blackout Lightning
-// Description: Barebones whole-hat blink on simple kick detection.
-// Version: 0.5
+// Description: Simple timed whole-hat blink every two seconds.
+// Version: 0.6
 
 var level = 0.9
 var colorHue = 0.62
@@ -8,40 +8,19 @@ var colorSat = 0.95
 
 var blinkMs = 90
 var blinkLeftMs = 0
-var lastHitMs = -100000
-var nowMs = 0
-var minIntervalMs = 260
-var armed = 1
-var prevBass = 0
-
-// Fixed absolute kick thresholds. Tune in code only.
-var bassThreshold = 0.0012
-var rearmThreshold = 0.0006
-
-export var frequencyData = array(32)
-export var energyAverage = -1
+var elapsedMs = 0
+var flashMs = 2000
 
 export function beforeRender(delta) {
-  nowMs += delta
+  elapsedMs += delta
 
   if (blinkLeftMs > 0) {
     blinkLeftMs = max(0, blinkLeftMs - delta)
   }
 
-  if (energyAverage >= 0) {
-    var kickBand = frequencyData[0] + frequencyData[1] + frequencyData[2]
-    var bodyBand = frequencyData[3] + frequencyData[4] + frequencyData[5]
-    var bass = kickBand + bodyBand * 0.8
-    var intervalOk = (nowMs - lastHitMs) >= minIntervalMs
-    var crossedUp = prevBass <= bassThreshold && bass > bassThreshold
-    if (bass < rearmThreshold) armed = 1
-
-    if (armed && intervalOk && crossedUp) {
-      lastHitMs = nowMs
-      blinkLeftMs = blinkMs
-      armed = 0
-    }
-    prevBass = bass
+  while (elapsedMs >= flashMs) {
+    elapsedMs -= flashMs
+    blinkLeftMs = blinkMs
   }
 }
 
