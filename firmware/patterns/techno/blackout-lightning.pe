@@ -32,6 +32,7 @@ var triggerArmed = 1
 var beatIntervalMs = 470
 var lastKickMs = -1
 var blinkEvery = 1
+export var kickDivision = 1
 var kickCount = 0
 var reacquireHits = 0
 var minKickIntervalMs = 260
@@ -193,8 +194,9 @@ export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
 export function sliderInputGain(v) { inputGain = v * (0.3 + 0.3 * v) }
 export function sliderTriggerSensitivity(v) { triggerSensitivity = 0.7 + v * 0.3 }
 export function inputNumberKickDivision(v) {
-  if (v < 1.5) blinkEvery = 1
-  else if (v < 3) blinkEvery = 2
-  else blinkEvery = 4
+  if (v < 1.5) kickDivision = 1
+  else if (v < 3) kickDivision = 2
+  else kickDivision = 4
+  blinkEvery = kickDivision
 }
 export function sliderColor(v) { colorHue = v }
