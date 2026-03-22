@@ -34,6 +34,7 @@ var lastKickMs = -1
 var blinkEvery = 1
 var kickCount = 0
 var reacquireHits = 0
+var minKickIntervalMs = 260
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -111,8 +112,9 @@ function updateAudio() {
     lowRise = min(lowRise, onset)
   }
   var reacquireKick = peakReady && energy > 0.035 && dominance > dominanceThresh * 0.82 && separation > -0.08 && cymbalVeto
+  var intervalOk = gapMs >= minKickIntervalMs
 
-  if (triggerArmed && retriggerMs <= 0 && ((peakReady && energy > 0.05 && kickLike && cymbalVeto) || (reacquiring && reacquireHits < 2 && reacquireKick))) {
+  if (triggerArmed && retriggerMs <= 0 && intervalOk && ((peakReady && energy > 0.05 && kickLike && cymbalVeto) || (reacquiring && reacquireHits < 2 && reacquireKick))) {
     if (lastKickMs >= 0) {
       var intervalMs = nowMs - lastKickMs
       if (intervalMs > 220 && intervalMs < 800) {
