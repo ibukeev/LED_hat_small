@@ -190,5 +190,5 @@ export function render3D(index, x, y, z) {
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
 export function sliderInputGain(v) { inputGain = v * (0.3 + 0.3 * v) }
 export function sliderTriggerSensitivity(v) { triggerSensitivity = v }
-export function sliderEverySecondKick(v) { blinkEvery = v < 0.5 ? 1 : 2 }
+export function toggleEverySecondKick(v) { blinkEvery = v ? 2 : 1 }
 export function sliderColor(v) { colorHue = v }
