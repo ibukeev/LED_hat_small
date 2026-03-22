@@ -23,6 +23,7 @@ var boltB = -1
 var boltW = 0.08
 var boltPhase = 0
 var flash = 0
+var retriggerMs = 0
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -59,12 +60,13 @@ function updateAudio() {
   // Kick onset => spawn new lightning bolts.
   var onset = low - prevLow
   var thresh = 0.03 + (1 - triggerSensitivity) * 0.05
-  if (onset > thresh && energy > 0.08) {
+  if (retriggerMs <= 0 && onset > thresh && energy > 0.08) {
     boltA = hash1(t * 23.0 + onset * 11.0)
     boltB = hash1(t * 31.0 + onset * 7.0)
     boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
     boltPhase = 1
     flash = 1
+    retriggerMs = 120
   } else {
     boltPhase *= 0.82
     flash *= 0.7
@@ -98,6 +100,7 @@ function renderCore(x, y, z) {
 
 export function beforeRender(delta) {
   t += delta / 1000
+  retriggerMs = max(0, retriggerMs - delta)
   updateAudio()
 }
 
