@@ -3,8 +3,8 @@
 // Version: 0.1
 
 var level = 0.9
-var holdMs = 120
-var fallMs = 260
+var holdMs = 115
+var fallMs = 492
 var colorHue = 0.62
 var colorSat = 0.95
 

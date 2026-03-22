@@ -8,6 +8,8 @@ var inputGain = 0.8
 var triggerSensitivity = 0.8
 var colorHue = 0.62 // blue-white default
 var colorSat = 0.95
+var holdMs = 115
+var dropMs = 492
 
 // Sensor Expansion Board audio vars
 export var frequencyData = array(32)
@@ -27,8 +29,7 @@ var boltA = -1
 var boltB = -1
 var boltW = 0.08
 var boltPhase = 0
-var flash = 0
-var glow = 0
+var hitAgeMs = 99999
 var retriggerMs = 0
 var triggerArmed = 1
 var beatIntervalMs = 470
@@ -53,6 +54,15 @@ function clamp(v, lo, hi) {
   if (v < lo) return lo
   if (v > hi) return hi
   return v
+}
+
+function hitEnv() {
+  if (hitAgeMs <= holdMs) return 1
+  if (hitAgeMs <= holdMs + dropMs) {
+    var t = (hitAgeMs - holdMs) / max(1, dropMs)
+    return 1 - t * t
+  }
+  return 0
 }
 
 function updateAudio() {
@@ -133,8 +143,7 @@ function updateAudio() {
       boltB = hash1(t * 31.0 + onset * 7.0)
       boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
       boltPhase = 1
-      flash = 1
-      glow = max(glow, 0.45 + energy * 0.4)
+      hitAgeMs = 0
     }
     retriggerMs = clamp(beatIntervalMs * 0.24, 90, 170)
     triggerArmed = 0
@@ -142,19 +151,17 @@ function updateAudio() {
   } else {
     if (!reacquiring) reacquireHits = 0
     boltPhase *= 0.97
-    flash *= 0.92
-    glow *= 0.985
   }
 }
 
 function renderCore(x, y, z) {
   // Very dark baseline.
   var v = 0
+  var env = hitEnv()
 
-  // White kick flash for 1-2 frames.
-  if (flash > 0.35) {
-    // Keep the attack in the same color family as the tail to avoid a white->color jump.
-    hsv(colorHue, colorSat * 0.8, level)
+  // Hold full color briefly, then let the localized strike take over.
+  if (env > 0.72) {
+    hsv(colorHue, colorSat, env * level)
     return
   }
 
@@ -167,9 +174,9 @@ function renderCore(x, y, z) {
     v = (bA + bB * 0.9) * boltPhase * (0.35 + 0.65 * low)
   }
 
-  // Longer dim tail behind the initial strike.
-  if (glow > 0.01) {
-    var tail = glow * (0.18 + 0.42 * low)
+  // Hold/drop envelope provides a slower release behind the strike.
+  if (env > 0.01) {
+    var tail = env * (0.12 + 0.28 * low)
     if (tail > v) v = tail
   }
 
@@ -181,6 +188,7 @@ function renderCore(x, y, z) {
 export function beforeRender(delta) {
   t += delta / 1000
   nowMs += delta
+  hitAgeMs += delta
   retriggerMs = max(0, retriggerMs - delta)
   updateAudio()
 }
@@ -203,6 +211,8 @@ export function render3D(index, x, y, z) {
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
 export function sliderInputGain(v) { inputGain = v * (0.3 + 0.3 * v) }
 export function sliderTriggerSensitivity(v) { triggerSensitivity = 0.7 + v * 0.3 }
+export function sliderHold(v) { holdMs = 20 + v * 380 }
+export function sliderDrop(v) { dropMs = 60 + v * 540 }
 export function inputNumberKickDivision(v) {
   if (v < 1.5) kickDivision = 1
   else if (v < 3) kickDivision = 2
