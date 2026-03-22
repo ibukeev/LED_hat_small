@@ -115,8 +115,4 @@ export function render3D(index, x, y, z) {
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
 export function sliderInputGain(v) { inputGain = v }
 export function sliderTriggerSensitivity(v) { triggerSensitivity = v }
-export function sliderInputSensitivity(v) {
-  inputGain = v
-  triggerSensitivity = v
-}
 export function sliderColor(v) { colorHue = v }
