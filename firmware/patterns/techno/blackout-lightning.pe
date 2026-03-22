@@ -145,6 +145,6 @@ export function render3D(index, x, y, z) {
 
 // Minimal UI
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
-export function sliderInputGain(v) { inputGain = v }
+export function sliderInputGain(v) { inputGain = v * v * 0.55 }
 export function sliderTriggerSensitivity(v) { triggerSensitivity = v }
 export function sliderColor(v) { colorHue = v }
