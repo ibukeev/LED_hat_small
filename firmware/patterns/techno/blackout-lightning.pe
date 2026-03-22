@@ -1,24 +1,18 @@
 // Pattern: Blackout Lightning
-// Description: Simple whole-hat kick blink.
-// Version: 0.2
+// Description: Minimal whole-hat kick blink with simple audio detection.
+// Version: 0.3
 
 var level = 0.9
-var inputGain = 0.35
-var sensitivity = 0.9
+var inputGain = 0.45
+var sensitivity = 0.85
 var colorHue = 0.62
 var colorSat = 0.95
 
-var pulse = 0
 var blinkMs = 90
 var blinkLeftMs = 0
-var low = 0
-var lowPeak = 0.01
-var highPeak = 0.01
 var lastHitMs = -100000
 var nowMs = 0
 var minIntervalMs = 260
-var hasHit = 0
-var silenceMs = 0
 
 export var frequencyData = array(32)
 export var energyAverage = -1
@@ -31,61 +25,31 @@ function clamp01(v) {
 
 export function beforeRender(delta) {
   nowMs += delta
-  pulseAgeMs += delta
+
+  if (blinkLeftMs > 0) {
+    blinkLeftMs = max(0, blinkLeftMs - delta)
+  }
 
   if (energyAverage >= 0) {
     var kickBand = frequencyData[0] + frequencyData[1] + frequencyData[2]
     var bodyBand = frequencyData[3] + frequencyData[4] + frequencyData[5]
     var highBand = frequencyData[10] + frequencyData[11] + frequencyData[12] + frequencyData[13]
 
-    var bassBand = kickBand + bodyBand * 1.0
-    lowPeak = max(lowPeak * 0.995, bassBand)
-    highPeak = max(highPeak * 0.995, highBand)
-
-    var prevLow = low
-    var lowNorm = bassBand / max(0.00001, lowPeak)
-    var highNorm = highBand / max(0.00001, highPeak)
-    var boosted = lowNorm * (0.6 + 1.8 * inputGain)
-    low = low * 0.72 + (boosted / (1 + boosted)) * 0.28
-
-    var onset = low - prevLow
-    var energyGate = clamp01((energyAverage - 0.0007) / 0.01)
-    var onsetThresh = 0.018 + (1 - sensitivity) * 0.04
-    var shapeOk = lowNorm > 0.06 && highNorm < 1.0
+    var bass = (kickBand + bodyBand * 0.8) * (0.4 + inputGain * 1.6)
+    var highs = highBand * 0.9
+    var score = bass - highs * 0.35
+    var threshold = 0.0015 + (1 - sensitivity) * 0.004
     var intervalOk = (nowMs - lastHitMs) >= minIntervalMs
-    var activeSignal = bassBand > 0.0008 || energyAverage > 0.0009
 
-    if (activeSignal) silenceMs = 0
-    else silenceMs += delta
-
-    if (silenceMs > 1200) {
-      low = 0
-      lowPeak = 0.01
-      highPeak = 0.01
-    }
-
-    if (activeSignal && intervalOk && onset > onsetThresh && energyGate > 0.025 && shapeOk) {
+    if (intervalOk && score > threshold) {
       lastHitMs = nowMs
-      hasHit = 1
       blinkLeftMs = blinkMs
     }
-  } else {
-    silenceMs += delta
-    if (silenceMs > 1200) {
-      low = 0
-      lowPeak = 0.01
-      highPeak = 0.01
-    }
   }
-
-  if (blinkLeftMs > 0) {
-    blinkLeftMs = max(0, blinkLeftMs - delta)
-    pulse = 1
-  } else pulse = 0
 }
 
 function renderCore(x, y, z) {
-  hsv(colorHue, colorSat, pulse * level)
+  hsv(colorHue, colorSat, (blinkLeftMs > 0) * level)
 }
 
 export function render(index) {
@@ -101,8 +65,8 @@ export function render3D(index, x, y, z) {
 }
 
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
-export function sliderInputGain(v) { inputGain = 0.05 + v * 0.75 }
-export function sliderSensitivity(v) { sensitivity = 0.7 + v * 0.3 }
+export function sliderInputGain(v) { inputGain = 0.1 + v * 0.9 }
+export function sliderSensitivity(v) { sensitivity = 0.5 + v * 0.5 }
 export function hsvPickerColor(h, s, v) {
   colorHue = h
   colorSat = s
