@@ -1,10 +1,8 @@
 // Pattern: Blackout Lightning
-// Description: Minimal whole-hat kick blink with direct audio detection.
-// Version: 0.4
+// Description: Barebones whole-hat blink on simple kick detection.
+// Version: 0.5
 
 var level = 0.9
-var inputGain = 0.45
-var sensitivity = 0.85
 var colorHue = 0.62
 var colorSat = 0.95
 
@@ -13,6 +11,10 @@ var blinkLeftMs = 0
 var lastHitMs = -100000
 var nowMs = 0
 var minIntervalMs = 260
+
+// Fixed absolute kick thresholds. Tune in code only.
+var bassThreshold = 0.0012
+var bassVsHighRatio = 0.7
 
 export var frequencyData = array(32)
 export var energyAverage = -1
@@ -29,12 +31,11 @@ export function beforeRender(delta) {
     var bodyBand = frequencyData[3] + frequencyData[4] + frequencyData[5]
     var highBand = frequencyData[10] + frequencyData[11] + frequencyData[12] + frequencyData[13]
 
-    var bass = (kickBand + bodyBand * 0.7) * (0.25 + inputGain * 1.75)
-    var threshold = 0.00035 + (1 - sensitivity) * 0.0018
-    var shapeOk = bass > highBand * 0.55
+    var bass = kickBand + bodyBand * 0.8
     var intervalOk = (nowMs - lastHitMs) >= minIntervalMs
+    var shapeOk = bass > highBand * bassVsHighRatio
 
-    if (intervalOk && bass > threshold && shapeOk) {
+    if (intervalOk && bass > bassThreshold && shapeOk) {
       lastHitMs = nowMs
       blinkLeftMs = blinkMs
     }
@@ -58,8 +59,6 @@ export function render3D(index, x, y, z) {
 }
 
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
-export function sliderInputGain(v) { inputGain = 0.1 + v * 0.9 }
-export function sliderSensitivity(v) { sensitivity = 0.5 + v * 0.5 }
 export function hsvPickerColor(h, s, v) {
   colorHue = h
   colorSat = s
