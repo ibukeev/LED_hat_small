@@ -14,6 +14,7 @@ export var energyAverage = -1
 
 var t = 0
 var low = 0
+var lowRise = 0
 var energy = 0
 var kickPeak = 0.01
 var midPeak = 0.01
@@ -78,13 +79,16 @@ function updateAudio() {
   var onset = low - prevLow
   var thresh = 0.03 + (1 - triggerSensitivity) * 0.05
   var resetThresh = thresh * 0.35
+  lowRise = max(onset, lowRise * 0.72)
   var dominance = bassBand / max(0.00005, midBand * 1.05 + highBand * 1.05 + bodyBand * 0.08)
   var dominanceThresh = 0.54 - triggerSensitivity * 0.08
   var separation = lowNorm - midNorm * 0.32 - highNorm * 0.72
   var cymbalVeto = highNorm < 0.62 + lowNorm * 0.12
-  if (onset < resetThresh) triggerArmed = 1
+  var envelopeReset = low < 0.58 || onset < resetThresh
+  if (envelopeReset) triggerArmed = 1
 
-  if (triggerArmed && retriggerMs <= 0 && onset > thresh && energy > 0.05 && dominance > dominanceThresh && separation > 0.02 && cymbalVeto) {
+  var peakReady = onset > thresh && onset >= lowRise * 0.9
+  if (triggerArmed && retriggerMs <= 0 && peakReady && energy > 0.05 && dominance > dominanceThresh && separation > 0.02 && cymbalVeto) {
     boltA = hash1(t * 23.0 + onset * 11.0)
     boltB = hash1(t * 31.0 + onset * 7.0)
     boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
@@ -92,6 +96,7 @@ function updateAudio() {
     flash = 1
     retriggerMs = 140
     triggerArmed = 0
+    lowRise = 0
   } else {
     boltPhase *= 0.82
     flash *= 0.7
