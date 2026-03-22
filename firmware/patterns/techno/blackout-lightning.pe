@@ -115,9 +115,9 @@ function updateAudio() {
   if (envelopeReset) triggerArmed = 1
 
   var peakReady = onset > thresh && onset >= lowRise * 0.9
-  var bodyPeakReady = onset > thresh * 0.72 && onset >= lowRise * 0.72
+  var bodyPeakReady = onset > thresh * 0.58 && onset >= lowRise * 0.58
   var deepKick = dominance > dominanceThresh && separation > -0.01
-  var bodyKick = bassBand / max(0.00005, highBand * 1.0 + midBand * 0.65) > 0.48 && separation > -0.14 && lowNorm > 0.1
+  var bodyKick = bassBand / max(0.00005, highBand * 0.9 + midBand * 0.6) > 0.38 && separation > -0.18 && lowNorm > 0.06
   var kickLike = deepKick || bodyKick
   var gapMs = lastKickMs < 0 ? 9999 : nowMs - lastKickMs
   var reacquiring = lastKickMs >= 0 && gapMs > max(900, beatIntervalMs * 1.8)
@@ -126,10 +126,10 @@ function updateAudio() {
     triggerArmed = 1
     lowRise = min(lowRise, onset)
   }
-  var reacquireKick = peakReady && energy > 0.035 && dominance > dominanceThresh * 0.82 && separation > -0.08 && cymbalVeto
+  var reacquireKick = bodyPeakReady && energy > 0.03 && (dominance > dominanceThresh * 0.75 || bodyKick) && separation > -0.12 && cymbalVeto
   var intervalOk = gapMs >= minKickIntervalMs
 
-  if (triggerArmed && retriggerMs <= 0 && intervalOk && (((peakReady && deepKick) || (bodyPeakReady && bodyKick)) && energy > 0.04 && cymbalVeto || (reacquiring && reacquireHits < 2 && reacquireKick))) {
+  if (triggerArmed && retriggerMs <= 0 && intervalOk && (((peakReady && deepKick && energy > 0.04) || (bodyPeakReady && bodyKick && energy > 0.03)) && cymbalVeto || (reacquiring && reacquireHits < 2 && reacquireKick))) {
     if (lastKickMs >= 0) {
       var intervalMs = nowMs - lastKickMs
       if (intervalMs > 220 && intervalMs < 800) {
@@ -163,11 +163,11 @@ function renderCore(x, y, z) {
 
   // Whole-hat kick envelope. Localized strike detail can sit on top of this.
   if (env > 0.01) {
-    v = env * (0.75 + 0.2 * low)
+    v = env
   }
 
-  // Lightning stripes around random x positions on kick.
-  if (boltPhase > 0.02) {
+  // Bring in stripe detail later so the main hit always reads as full-hat first.
+  if (boltPhase > 0.02 && env < 0.55) {
     var dA = abs(x - boltA)
     var dB = abs(x - boltB)
     var bA = exp(-pow(dA / max(0.01, boltW), 2))
