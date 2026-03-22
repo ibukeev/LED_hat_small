@@ -1,5 +1,5 @@
 // Pattern: Fixed BPM Flash Test
-// Description: Detector-free once-per-second flash test for tuning color and release.
+// Description: Detector-free once-every-two-seconds flash test for tuning color and release.
 // Version: 0.1
 
 var level = 0.9
@@ -9,7 +9,7 @@ var colorSat = 0.95
 
 var pulse = 0
 var elapsedMs = 0
-var flashMs = 1000
+var flashMs = 2000
 
 export function beforeRender(delta) {
   elapsedMs += delta
