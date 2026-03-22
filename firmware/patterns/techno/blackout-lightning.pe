@@ -13,6 +13,7 @@ export var frequencyData = array(32)
 export var energyAverage = -1
 
 var t = 0
+var nowMs = 0
 var low = 0
 var lowRise = 0
 var energy = 0
@@ -28,6 +29,10 @@ var boltPhase = 0
 var flash = 0
 var retriggerMs = 0
 var triggerArmed = 1
+var beatIntervalMs = 470
+var lastKickMs = -1
+var blinkEvery = 1
+var kickCount = 0
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -37,6 +42,12 @@ function clamp01(v) {
 
 function hash1(x) {
   return frac(sin(x * 127.1) * 43758.5453)
+}
+
+function clamp(v, lo, hi) {
+  if (v < lo) return lo
+  if (v > hi) return hi
+  return v
 }
 
 function updateAudio() {
@@ -93,12 +104,23 @@ function updateAudio() {
   var kickLike = deepKick || bodyKick
 
   if (triggerArmed && retriggerMs <= 0 && peakReady && energy > 0.05 && kickLike && cymbalVeto) {
-    boltA = hash1(t * 23.0 + onset * 11.0)
-    boltB = hash1(t * 31.0 + onset * 7.0)
-    boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
-    boltPhase = 1
-    flash = 1
-    retriggerMs = 140
+    if (lastKickMs >= 0) {
+      var intervalMs = nowMs - lastKickMs
+      if (intervalMs > 220 && intervalMs < 800) {
+        beatIntervalMs = beatIntervalMs * 0.72 + intervalMs * 0.28
+      }
+    }
+    lastKickMs = nowMs
+    kickCount += 1
+    var shouldBlink = (kickCount % blinkEvery) == 0
+    if (shouldBlink) {
+      boltA = hash1(t * 23.0 + onset * 11.0)
+      boltB = hash1(t * 31.0 + onset * 7.0)
+      boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
+      boltPhase = 1
+      flash = 1
+    }
+    retriggerMs = clamp(beatIntervalMs * 0.24, 90, 170)
     triggerArmed = 0
     lowRise = 0
   } else {
@@ -134,6 +156,7 @@ function renderCore(x, y, z) {
 
 export function beforeRender(delta) {
   t += delta / 1000
+  nowMs += delta
   retriggerMs = max(0, retriggerMs - delta)
   updateAudio()
 }
