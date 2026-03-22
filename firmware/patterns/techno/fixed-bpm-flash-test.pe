@@ -3,23 +3,30 @@
 // Version: 0.1
 
 var level = 0.9
-var release = 0.965
+var holdMs = 120
+var fallMs = 260
 var colorHue = 0.62
 var colorSat = 0.95
 
 var pulse = 0
 var elapsedMs = 0
 var flashMs = 2000
+var pulseAgeMs = 99999
 
 export function beforeRender(delta) {
   elapsedMs += delta
+  pulseAgeMs += delta
 
   while (elapsedMs >= flashMs) {
     elapsedMs -= flashMs
-    pulse = 1
+    pulseAgeMs = 0
   }
 
-  pulse *= release
+  if (pulseAgeMs <= holdMs) pulse = 1
+  else if (pulseAgeMs <= holdMs + fallMs) {
+    var t = (pulseAgeMs - holdMs) / fallMs
+    pulse = 1 - t * t
+  } else pulse = 0
 }
 
 export function render(index) {
@@ -36,8 +43,8 @@ export function render3D(index, x, y, z) {
 }
 
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
-
-export function sliderRelease(v) { release = 0.9 + v * 0.095 }
+export function sliderHold(v) { holdMs = 20 + v * 380 }
+export function sliderDrop(v) { fallMs = 60 + v * 540 }
 
 export function hsvPickerColor(h, s, v) {
   colorHue = h
