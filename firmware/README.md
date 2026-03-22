@@ -46,6 +46,11 @@ firmware/
 - Audio-reactive look with fallback motion
 - Exposed UI controls for speed, width, trail, strobe feel
 
+### Blackout Lightning (`patterns/techno/blackout-lightning.pe`)
+- Mostly black with short lightning strikes on kick hits
+- Audio-reactive via Sensor Expansion Board
+- Exposed UI controls for output level, input gain, trigger sensitivity, and color
+
 ### Aurora (`patterns/general/aurora.pe`)
 - Northern lights effect
 - Smooth color transitions
@@ -89,6 +94,30 @@ export function render(index) {
 3. **Comments**: Document complex logic
 4. **Testing**: Test at different brightness levels
 5. **Optimization**: Minimize memory usage
+
+### Audio-Reactive Controls
+
+Some patterns expose separate controls for audio level and trigger behavior. Keep these roles distinct when tuning live:
+
+- **Output Level**: Pattern-local brightness trim. Use it to balance one pattern against others, not as the main global brightness control.
+- **Input Gain**: Scales how strongly incoming audio affects the pattern before hit detection. Raise this if the pattern reacts, but feels weak or lacks punch.
+- **Trigger Sensitivity**: Controls how easily the pattern decides that a hit happened. Raise this if the pattern is missing kicks entirely. Lower it if background rumble or mushy bass causes too many triggers.
+
+### Blackout Lightning Tuning Notes
+
+`patterns/techno/blackout-lightning.pe` uses separate `Input Gain` and `Trigger Sensitivity` controls.
+
+- Start with `Trigger Sensitivity` high, around `0.8` to `1.0`.
+- Set `Input Gain` to a moderate value, around `0.3` to `0.6`.
+- If the pattern barely reacts, raise `Trigger Sensitivity` first.
+- If it reacts but the strikes feel too weak, raise `Input Gain`.
+- If it fires too often on sustained bass, lower `Trigger Sensitivity`.
+- If high gain makes the response feel bloated or less crisp, lower `Input Gain`.
+
+Best practice:
+- Set a safe global `Limit Brightness` and use the global brightness slider as the live master.
+- Use per-pattern `Output Level` only to normalize patterns against each other.
+- Avoid solving the same brightness problem with both a low global brightness and a low pattern output trim.
 
 ## Presets
 
@@ -152,4 +181,3 @@ When adding new patterns:
 2. Document parameters
 3. Include usage notes
 4. Add to this README
-

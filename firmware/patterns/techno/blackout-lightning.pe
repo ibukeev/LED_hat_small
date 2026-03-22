@@ -50,7 +50,11 @@ function updateAudio() {
   }
 
   var prevLow = low
-  low = low * 0.68 + clamp01((lowBand / max(0.00001, lowPeak)) * (1.0 + 2.6 * inputGain)) * 0.32
+  // Preserve transient headroom at high gain so kicks still create onsets.
+  var lowNorm = lowBand / max(0.00001, lowPeak)
+  var lowBoost = lowNorm * (0.7 + 1.8 * inputGain)
+  var lowShaped = lowBoost / (1 + lowBoost)
+  low = low * 0.68 + lowShaped * 0.32
 
   // Kick onset => spawn new lightning bolts.
   var onset = low - prevLow

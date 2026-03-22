@@ -54,6 +54,14 @@ Project-specific memory and conventions for `LED_hat_small`.
   - Minimal UI controls for live use.
   - `Energy` slider acts as macro sensitivity control.
 
+## Audio-Reactive Control Conventions
+- When separating audio-reactive controls, prefer distinct meanings:
+  - `Input Gain`: scales incoming audio influence before event detection.
+  - `Trigger Sensitivity`: controls how easily hits or events are allowed to trigger.
+- Avoid one slider driving both gain and trigger threshold when that makes UI behavior feel inverted.
+- For high-gain live use, prefer soft compression/shaping over hard clipping in detector paths so kick onsets remain visible.
+- `firmware/patterns/techno/blackout-lightning.pe` follows this split-control approach.
+
 ## Documentation Update Rule
 - If pattern folder layout, sensor variable usage, or control philosophy changes, update:
   - `AGENTS.md` (this file)
