@@ -162,7 +162,7 @@ function renderCore(x, y, z) {
 
   // Whole-hat kick envelope. Localized strike detail can sit on top of this.
   if (env > 0.01) {
-    v = env * (0.12 + 0.28 * low)
+    v = env * (0.75 + 0.2 * low)
   }
 
   // Lightning stripes around random x positions on kick.
