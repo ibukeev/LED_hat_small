@@ -28,6 +28,7 @@ var boltB = -1
 var boltW = 0.08
 var boltPhase = 0
 var flash = 0
+var glow = 0
 var retriggerMs = 0
 var triggerArmed = 1
 var beatIntervalMs = 470
@@ -133,14 +134,16 @@ function updateAudio() {
       boltW = 0.03 + 0.12 * (0.5 + energy * 0.5)
       boltPhase = 1
       flash = 1
+      glow = max(glow, 0.45 + energy * 0.4)
     }
     retriggerMs = clamp(beatIntervalMs * 0.24, 90, 170)
     triggerArmed = 0
     lowRise = 0
   } else {
     if (!reacquiring) reacquireHits = 0
-    boltPhase *= 0.94
-    flash *= 0.9
+    boltPhase *= 0.97
+    flash *= 0.92
+    glow *= 0.985
   }
 }
 
@@ -162,6 +165,12 @@ function renderCore(x, y, z) {
     var bA = exp(-pow(dA / max(0.01, boltW), 2))
     var bB = exp(-pow(dB / max(0.01, boltW * 0.8), 2))
     v = (bA + bB * 0.9) * boltPhase * (0.35 + 0.65 * low)
+  }
+
+  // Longer dim tail behind the initial strike.
+  if (glow > 0.01) {
+    var tail = glow * (0.18 + 0.42 * low)
+    if (tail > v) v = tail
   }
 
   // Keep non-hit time near black.
