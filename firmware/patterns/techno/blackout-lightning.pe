@@ -1,17 +1,16 @@
 // Pattern: Blackout Lightning
-// Description: Simple whole-hat kick flash with hold/drop envelope.
+// Description: Simple whole-hat kick blink.
 // Version: 0.2
 
 var level = 0.9
 var inputGain = 0.35
 var sensitivity = 0.9
-var holdMs = 115
-var dropMs = 492
 var colorHue = 0.62
 var colorSat = 0.95
 
 var pulse = 0
-var pulseAgeMs = 99999
+var blinkMs = 90
+var blinkLeftMs = 0
 var low = 0
 var lowPeak = 0.01
 var highPeak = 0.01
@@ -19,6 +18,7 @@ var lastHitMs = -100000
 var nowMs = 0
 var minIntervalMs = 260
 var hasHit = 0
+var silenceMs = 0
 
 export var frequencyData = array(32)
 export var energyAverage = -1
@@ -53,19 +53,34 @@ export function beforeRender(delta) {
     var onsetThresh = 0.018 + (1 - sensitivity) * 0.04
     var shapeOk = lowNorm > 0.06 && highNorm < 1.0
     var intervalOk = (nowMs - lastHitMs) >= minIntervalMs
+    var activeSignal = bassBand > 0.0008 || energyAverage > 0.0009
 
-    if (intervalOk && onset > onsetThresh && energyGate > 0.025 && shapeOk) {
+    if (activeSignal) silenceMs = 0
+    else silenceMs += delta
+
+    if (silenceMs > 1200) {
+      low = 0
+      lowPeak = 0.01
+      highPeak = 0.01
+    }
+
+    if (activeSignal && intervalOk && onset > onsetThresh && energyGate > 0.025 && shapeOk) {
       lastHitMs = nowMs
       hasHit = 1
-      pulseAgeMs = 0
+      blinkLeftMs = blinkMs
+    }
+  } else {
+    silenceMs += delta
+    if (silenceMs > 1200) {
+      low = 0
+      lowPeak = 0.01
+      highPeak = 0.01
     }
   }
 
-  if (!hasHit) pulse = 0
-  else if (pulseAgeMs <= holdMs) pulse = 1
-  else if (pulseAgeMs <= holdMs + dropMs) {
-    var t = (pulseAgeMs - holdMs) / dropMs
-    pulse = 1 - t * t
+  if (blinkLeftMs > 0) {
+    blinkLeftMs = max(0, blinkLeftMs - delta)
+    pulse = 1
   } else pulse = 0
 }
 
@@ -88,8 +103,6 @@ export function render3D(index, x, y, z) {
 export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
 export function sliderInputGain(v) { inputGain = 0.05 + v * 0.75 }
 export function sliderSensitivity(v) { sensitivity = 0.7 + v * 0.3 }
-export function sliderHold(v) { holdMs = 20 + v * 380 }
-export function sliderDrop(v) { dropMs = 60 + v * 540 }
 export function hsvPickerColor(h, s, v) {
   colorHue = h
   colorSat = s
