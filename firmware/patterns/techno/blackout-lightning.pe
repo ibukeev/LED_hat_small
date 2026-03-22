@@ -118,7 +118,7 @@ function updateAudio() {
   var bodyKick = bassBand / max(0.00005, highBand * 1.35 + midBand * 0.8) > 0.72 && separation > -0.04 && lowNorm > 0.24
   var kickLike = deepKick || bodyKick
   var gapMs = lastKickMs < 0 ? 9999 : nowMs - lastKickMs
-  var reacquiring = gapMs > max(900, beatIntervalMs * 1.8)
+  var reacquiring = lastKickMs >= 0 && gapMs > max(900, beatIntervalMs * 1.8)
   if (reacquiring) {
     retriggerMs = 0
     triggerArmed = 1
