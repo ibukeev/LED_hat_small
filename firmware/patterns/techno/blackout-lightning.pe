@@ -18,10 +18,7 @@ var highPeak = 0.01
 var lastHitMs = -100000
 var nowMs = 0
 var minIntervalMs = 260
-
-var blinkEvery = 1
-export var kickDivision = 1
-var kickCount = 0
+var hasHit = 0
 
 export var frequencyData = array(32)
 export var energyAverage = -1
@@ -59,12 +56,13 @@ export function beforeRender(delta) {
 
     if (intervalOk && onset > onsetThresh && energyGate > 0.025 && shapeOk) {
       lastHitMs = nowMs
-      kickCount += 1
-      if ((kickCount % blinkEvery) == 0) pulseAgeMs = 0
+      hasHit = 1
+      pulseAgeMs = 0
     }
   }
 
-  if (pulseAgeMs <= holdMs) pulse = 1
+  if (!hasHit) pulse = 0
+  else if (pulseAgeMs <= holdMs) pulse = 1
   else if (pulseAgeMs <= holdMs + dropMs) {
     var t = (pulseAgeMs - holdMs) / dropMs
     pulse = 1 - t * t
@@ -92,12 +90,6 @@ export function sliderInputGain(v) { inputGain = 0.05 + v * 0.75 }
 export function sliderSensitivity(v) { sensitivity = 0.7 + v * 0.3 }
 export function sliderHold(v) { holdMs = 20 + v * 380 }
 export function sliderDrop(v) { dropMs = 60 + v * 540 }
-export function inputNumberKickDivision(v) {
-  if (v < 1.5) kickDivision = 1
-  else if (v < 3) kickDivision = 2
-  else kickDivision = 4
-  blinkEvery = kickDivision
-}
 export function hsvPickerColor(h, s, v) {
   colorHue = h
   colorSat = s
