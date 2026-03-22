@@ -139,8 +139,8 @@ function updateAudio() {
     lowRise = 0
   } else {
     if (!reacquiring) reacquireHits = 0
-    boltPhase *= 0.9
-    flash *= 0.82
+    boltPhase *= 0.94
+    flash *= 0.9
   }
 }
 
