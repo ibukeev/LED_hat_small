@@ -153,8 +153,8 @@ function renderCore(x, y, z) {
 
   // White kick flash for 1-2 frames.
   if (flash > 0.35) {
-    // Keep it bright but slightly tinted so color control remains visible.
-    hsv(colorHue, colorSat * 0.25, level)
+    // Keep the attack in the same color family as the tail to avoid a white->color jump.
+    hsv(colorHue, colorSat * 0.8, level)
     return
   }
 
