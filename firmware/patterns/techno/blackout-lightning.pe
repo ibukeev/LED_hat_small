@@ -115,8 +115,9 @@ function updateAudio() {
   if (envelopeReset) triggerArmed = 1
 
   var peakReady = onset > thresh && onset >= lowRise * 0.9
+  var bodyPeakReady = onset > thresh * 0.72 && onset >= lowRise * 0.72
   var deepKick = dominance > dominanceThresh && separation > -0.01
-  var bodyKick = bassBand / max(0.00005, highBand * 1.15 + midBand * 0.7) > 0.58 && separation > -0.1 && lowNorm > 0.16
+  var bodyKick = bassBand / max(0.00005, highBand * 1.0 + midBand * 0.65) > 0.48 && separation > -0.14 && lowNorm > 0.1
   var kickLike = deepKick || bodyKick
   var gapMs = lastKickMs < 0 ? 9999 : nowMs - lastKickMs
   var reacquiring = lastKickMs >= 0 && gapMs > max(900, beatIntervalMs * 1.8)
@@ -128,7 +129,7 @@ function updateAudio() {
   var reacquireKick = peakReady && energy > 0.035 && dominance > dominanceThresh * 0.82 && separation > -0.08 && cymbalVeto
   var intervalOk = gapMs >= minKickIntervalMs
 
-  if (triggerArmed && retriggerMs <= 0 && intervalOk && ((peakReady && energy > 0.04 && kickLike && cymbalVeto) || (reacquiring && reacquireHits < 2 && reacquireKick))) {
+  if (triggerArmed && retriggerMs <= 0 && intervalOk && (((peakReady && deepKick) || (bodyPeakReady && bodyKick)) && energy > 0.04 && cymbalVeto || (reacquiring && reacquireHits < 2 && reacquireKick))) {
     if (lastKickMs >= 0) {
       var intervalMs = nowMs - lastKickMs
       if (intervalMs > 220 && intervalMs < 800) {
