@@ -197,14 +197,6 @@ Important note:
 
 ### Detector Variants In Phase 1
 
-Implement the following detectors side by side:
-
-1. overall energy threshold
-2. low-band threshold
-3. low-band rising-edge detector
-4. bass-vs-high ratio detector
-5. onset + ratio detector
-
 Each detector should emit:
 
 - trigger frame indices

@@ -10,3 +10,6 @@ Data/example_tracks/example_visualizer/
 
 # Generated analysis artifacts.
 tools/kick_detector/output/
+
+# Local Python environment for kick detector tooling.
+.venv/
