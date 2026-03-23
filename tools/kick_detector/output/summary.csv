@@ -1,0 +1,7 @@
+track,detector,trigger_count,avg_interval_s,first_triggers_s
+Monolink - Return To Oz - 04m35s-05m05s.wav,low_band_threshold,15,0.484302,"23.13, 23.61, 24.10, 24.59, 25.08, 25.57, 26.05, 26.52"
+Monolink - Return To Oz - 04m35s-05m05s.wav,low_band_rising_edge,15,0.484302,"23.13, 23.61, 24.10, 24.59, 25.08, 25.57, 26.05, 26.52"
+Monolink - Return To Oz - 04m35s-05m05s.wav,bass_vs_high_ratio,16,0.450467,"23.15, 23.64, 23.94, 24.13, 24.59, 25.08, 25.57, 26.12"
+Monolink - Return To Oz - 04m35s-05m05s.wav,onset_plus_ratio,18,1.649983,"1.86, 23.13, 23.50, 23.68, 23.92, 24.10, 24.59, 25.08"
+Monolink - Return To Oz - 04m35s-05m05s.wav,onset_plus_ratio_peak_picked,16,1.871528,"1.86, 23.15, 23.64, 24.13, 24.61, 25.10, 25.59, 26.12"
+Monolink - Return To Oz - 04m35s-05m05s.wav,onset_plus_ratio_peak_picked_low_qualified,15,0.484302,"23.15, 23.64, 24.13, 24.61, 25.10, 25.59, 26.12, 26.54"

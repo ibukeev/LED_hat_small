@@ -223,6 +223,135 @@ Current takeaway from this test:
   - some onset-based selectivity
   - plus stronger qualification that favors the main beat over isolated burst events
 
+## Phase 2 Detector Directions
+
+Phase 1 clarified that the target is not generic percussive detection. The detector should prefer the main beat only.
+
+### Target Behavior
+
+- react to the main bassy beat
+- suppress intermediate rhythmic clutter between main kicks
+- stay quiet during interludes and risers
+- avoid isolated transient bursts that are not part of the main beat pattern
+
+### What Phase 1 Ruled Out
+
+- `low_band_threshold`
+  - too permissive in denser sections
+- `low_band_rising_edge`
+  - still too permissive once rhythmic clutter appears
+- raw `bass_vs_high_ratio`
+  - useful when the main beat disappears
+  - but can become too strict and miss valid kicks in some sections
+- raw `onset_plus_ratio`
+  - strongest overall Phase 1 candidate in dense beat sections
+  - but can still false-trigger on isolated transient bursts
+
+### Phase 2 Candidates To Try
+
+1. `onset_plus_ratio + local peak picking`
+
+- start from `onset_plus_ratio`
+- require the trigger to be the strongest candidate within a short local window
+- intended effect:
+  - keep the dominant beat hit
+  - suppress intermediate smaller events between kicks
+
+2. `onset_plus_ratio + stronger low-band qualification`
+
+- start from `onset_plus_ratio`
+- add a stricter minimum on low-band or low-plus-body energy
+- intended effect:
+  - reduce false triggers on isolated bright transients
+  - keep onset information for dense rhythmic sections
+
+3. `bass_vs_high_ratio + onset rescue`
+
+- start from `bass_vs_high_ratio`
+- add a secondary onset condition so flatter but valid kicks are not rejected as easily
+- intended effect:
+  - preserve the useful bass-dominance filter when the main beat disappears
+  - recover some missed valid kicks in mixed sections
+
+4. `main-beat spacing filter`
+
+- apply a short competition window or adaptive minimum spacing after candidate detection
+- keep only the strongest event in each local beat-sized neighborhood
+- intended effect:
+  - enforce main-beat preference
+  - reduce between-beat clutter without relying entirely on raw thresholds
+
+### Recommended Phase 2 Order
+
+1. try `onset_plus_ratio + local peak picking`
+2. if isolated transient false positives remain, add stronger low-band qualification
+3. if valid kicks are still missed when bass dominance weakens, test `bass_vs_high_ratio + onset rescue`
+4. only then add a main-beat spacing filter if needed
+
+## Phase 2 Trial Notes
+
+### onset_plus_ratio_peak_picked
+
+Implemented as:
+
+- start from `onset_plus_ratio`
+- compute a local score based on onset strength, low/body energy, and bass dominance
+- keep only the strongest candidate inside a short local neighborhood before applying the refractory interval
+
+Observed behavior on the reviewed excerpts:
+
+- `Howling - 00m15s to 00m45s`
+  - trigger count dropped from `79` to `63`
+  - this reduced some between-beat clutter
+- `Howling - 02m30s to 03m00s`
+  - trigger count stayed at `64`
+  - timing shifted slightly but the detector remained much sparser than the simpler baselines
+- `Howling - 04m00s to 04m30s`
+  - minor reduction from `48` to `47`
+- `Monolink - 00m00s to 00m30s`
+  - no meaningful change on the easy baseline
+- `Monolink - 01m00s to 01m30s`
+  - no meaningful change on the easy baseline
+- `Monolink - 02m00s to 02m30s`
+  - no meaningful change on the main-beat-stop test
+- `Monolink - 04m35s to 05m05s`
+  - reduced beat-return clutter from `18` to `16`
+  - but still preserved the early isolated-transient false trigger near the start of the excerpt
+
+Current takeaway:
+
+- local peak picking is directionally useful
+- it improves main-beat preference in some denser sections without harming the easy baseline windows
+- it is not sufficient by itself because isolated transient false positives can still survive if they dominate their local neighborhood
+- the next Phase 2 refinement should be stronger low-band qualification on top of the peak-picked detector
+
+### onset_plus_ratio_peak_picked_low_qualified
+
+Implemented as:
+
+- start from `onset_plus_ratio_peak_picked`
+- require stronger low-band or combined low-plus-body energy before a peak-picked candidate is allowed through
+
+Observed behavior on the key review excerpts:
+
+- `Howling - 00m15s to 00m45s`
+  - no meaningful change versus `onset_plus_ratio_peak_picked`
+  - retained the useful reduction in between-beat clutter
+- `Howling - 02m30s to 03m00s`
+  - trigger count dropped from `64` to `63`
+  - removed one early trigger while preserving the sparse main-beat-oriented pattern
+- `Monolink - 04m35s to 05m05s`
+  - removed the early isolated-transient false trigger entirely
+  - reduced count from `16` to `15`
+  - aligned closely with the clean beat-return spacing
+
+Current takeaway:
+
+- this is the strongest detector variant tried so far
+- it preserves the useful behavior of peak picking in dense sections
+- it improves the isolated-transient failure case seen in the Monolink transition window
+- this should be treated as the current leading candidate for the next round of evaluation
+
 ## Implementation Plan
 
 ### Example Track Corpus

@@ -15,6 +15,10 @@ This tool:
   - `low_band_rising_edge`
   - `bass_vs_high_ratio`
   - `onset_plus_ratio`
+- compares one Phase 2 variant:
+  - `onset_plus_ratio_peak_picked`
+- compares an additional Phase 2 refinement:
+  - `onset_plus_ratio_peak_picked_low_qualified`
 - emits per-track:
   - `PNG` visualization
   - frame-level `CSV`

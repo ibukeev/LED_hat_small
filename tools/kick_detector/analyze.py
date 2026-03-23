@@ -35,6 +35,9 @@ class DetectorParams:
     onset_low_threshold: float = 0.10
     onset_threshold: float = 0.035
     min_interval_s: float = 0.18
+    peak_pick_window_s: float = 0.20
+    peak_pick_low_threshold: float = 0.16
+    peak_pick_low_body_threshold: float = 0.26
 
 
 @dataclass
@@ -194,12 +197,75 @@ def detector_onset_plus_ratio(track: TrackAnalysis, params: DetectorParams) -> n
     return apply_refractory(candidate, track.times, params.min_interval_s)
 
 
+def detector_onset_plus_ratio_peak_picked(track: TrackAnalysis, params: DetectorParams) -> np.ndarray:
+    ratio = (track.low_band + track.body_band + 1e-6) / (track.high_band + 1e-6)
+    base_candidate = (
+        (track.low_band > params.onset_low_threshold)
+        & (track.onset_strength > params.onset_threshold)
+        & (ratio > params.bass_high_ratio)
+    )
+
+    # Favor the strongest onset-dominant event in a short neighborhood.
+    score = track.onset_strength * (track.low_band + 0.5 * track.body_band) * np.log1p(ratio)
+    window_frames = max(1, int(round(params.peak_pick_window_s / (HOP_LENGTH / SAMPLE_RATE))))
+    peak_candidate = np.zeros_like(base_candidate, dtype=bool)
+
+    for idx, active in enumerate(base_candidate):
+        if not active:
+            continue
+        start = max(0, idx - window_frames)
+        end = min(base_candidate.size, idx + window_frames + 1)
+        local_scores = score[start:end]
+        local_base = base_candidate[start:end]
+        if score[idx] >= np.max(local_scores[local_base]):
+            peak_candidate[idx] = True
+
+    return apply_refractory(peak_candidate, track.times, params.min_interval_s)
+
+
+def detector_onset_plus_ratio_peak_picked_low_qualified(
+    track: TrackAnalysis, params: DetectorParams
+) -> np.ndarray:
+    ratio = (track.low_band + track.body_band + 1e-6) / (track.high_band + 1e-6)
+    base_candidate = (
+        (track.low_band > params.onset_low_threshold)
+        & (track.onset_strength > params.onset_threshold)
+        & (ratio > params.bass_high_ratio)
+    )
+
+    # Stronger bass/body qualification to reject isolated bright transients.
+    qualified = base_candidate & (
+        (track.low_band > params.peak_pick_low_threshold)
+        | ((track.low_band + track.body_band) > params.peak_pick_low_body_threshold)
+    )
+
+    score = track.onset_strength * (track.low_band + 0.5 * track.body_band) * np.log1p(ratio)
+    window_frames = max(1, int(round(params.peak_pick_window_s / (HOP_LENGTH / SAMPLE_RATE))))
+    peak_candidate = np.zeros_like(qualified, dtype=bool)
+
+    for idx, active in enumerate(qualified):
+        if not active:
+            continue
+        start = max(0, idx - window_frames)
+        end = min(qualified.size, idx + window_frames + 1)
+        local_scores = score[start:end]
+        local_qualified = qualified[start:end]
+        if score[idx] >= np.max(local_scores[local_qualified]):
+            peak_candidate[idx] = True
+
+    return apply_refractory(peak_candidate, track.times, params.min_interval_s)
+
+
 def run_detectors(track: TrackAnalysis, params: DetectorParams) -> None:
     track.triggers = {
         "low_band_threshold": detector_low_band_threshold(track, params),
         "low_band_rising_edge": detector_low_band_rising_edge(track, params),
         "bass_vs_high_ratio": detector_bass_vs_high_ratio(track, params),
         "onset_plus_ratio": detector_onset_plus_ratio(track, params),
+        "onset_plus_ratio_peak_picked": detector_onset_plus_ratio_peak_picked(track, params),
+        "onset_plus_ratio_peak_picked_low_qualified": detector_onset_plus_ratio_peak_picked_low_qualified(
+            track, params
+        ),
     }
 
 
