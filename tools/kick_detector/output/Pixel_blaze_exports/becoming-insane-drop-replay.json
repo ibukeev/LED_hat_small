@@ -1,0 +1,13 @@
+{
+  "rows": 352,
+  "active_start_s": 1.6514949798583984,
+  "active_end_s": 31.861459493637085,
+  "candidate_match_rows": 265,
+  "accepted_match_rows": 297,
+  "candidate_match_ratio": 0.7528409090909091,
+  "accepted_match_ratio": 0.84375,
+  "replay_candidate_count": 87,
+  "logged_candidate_count": 10,
+  "replay_accepted_count": 51,
+  "logged_accepted_count": 6
+}

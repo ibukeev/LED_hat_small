@@ -134,6 +134,139 @@ This debug pattern exports:
    - detector decisions
 7. Adjust the Python-side Pixelblaze approximation before further on-device tuning
 
+### Current Calibration Workflow
+
+The current calibration path is:
+
+1. Freeze the offline Python reference detector
+   - current reference:
+     - `onset_plus_ratio_peak_picked_low_qualified`
+2. Run a dedicated Pixelblaze debug pattern that exports:
+   - raw sensor inputs
+   - normalized detector features
+   - candidate / accepted trigger flags
+   - detector thresholds and internal state
+3. Capture those exported vars over time into CSV / JSONL using:
+   - `tools/kick_detector/capture_pixelblaze_vars.py`
+4. Replay the current Pixelblaze detector logic offline against the captured export stream using:
+   - `tools/kick_detector/replay_pixelblaze_capture.py`
+5. Compare:
+   - frozen Python excerpt baseline
+   - real Pixelblaze exported values
+   - replayed Pixelblaze detector decisions
+   - logged Pixelblaze detector decisions
+6. Use that comparison to recalibrate the Pixelblaze-side feature scaling and detector gating before further live tuning
+
+Important implementation note:
+
+- Pixelblaze detector logic is currently quantized to a fixed `50 ms` detector tick for calibration
+- `dbgAccepted` is latched for one full detector tick
+- this makes exported captures and offline replay meaningfully comparable
+
+### Current Working Method
+
+At this stage, detector experimentation should happen in this order:
+
+1. Keep a stable Pixelblaze debug pattern for data collection
+2. Capture one known excerpt from hardware
+3. Trim / align the capture in replay
+4. Compare:
+   - ideal frozen Python baseline
+   - logged Pixelblaze behavior
+   - replayed detector behavior
+5. Try detector changes in replay first
+6. Only port a replay change back to Pixelblaze after it shows a clear improvement
+
+This is now preferred over editing the live Pixelblaze pattern for every detector idea.
+
+### Current Pixelblaze Detector State
+
+The current Pixelblaze debug/live detector uses:
+
+- detector tick quantized to `50 ms`
+- `sub = bins 0..2`
+- `core = bins 1..6`
+- `body = bins 7..11`
+- neutral mids `12..20` ignored
+- `contamination = bins 21..25`
+- peak picking and refractory retained
+- slow baseline averages for:
+  - `sub`
+  - `core`
+  - `support`
+- over-average gating for:
+  - `sub`
+  - `core`
+  - `support`
+
+Recently tried and reverted:
+
+- `supportRawRatio`
+  - intent: require short-term support growth to reject bassy sustained body sounds
+  - outcome: reduced some pre-drop false positives, but collapsed post-drop recall
+  - status: reverted from both `main-beat-debug.pe` and `main-beat-flash.pe`
+
+### Current Status Summary
+
+What is working:
+
+- capture and replay workflow is functioning
+- active-window trimming / alignment is available in replay
+- accepted-event logging is reliable enough for comparison
+- revised band grouping improved over the original broad low/body/high split
+
+What is not solved yet:
+
+- the Monolink pre-drop false-trigger cluster is reduced but not eliminated
+- stricter short-term growth gates can suppress false triggers, but currently also suppress too many valid post-drop kicks
+
+Current recommendation:
+
+- stop iterating detector ideas directly on the live pattern
+- use captured Pixelblaze exports as the main experiment input
+- evaluate new candidate rules in replay first
+- only promote clear wins back to Pixelblaze
+
+### Hardware Calibration Reference Set
+
+The current hardware-side reference set for replay-first detector evaluation is:
+
+1. `Monolink - Return To Oz - 04m35s-05m05s`
+   - role:
+     - hard transition / pre-drop false-trigger case
+   - what it tests:
+     - stay quiet during break / riser
+     - react to the main beat after the drop
+     - avoid double / extra triggers after the drop
+
+2. `Becoming Insane - 03m45s-04m15s`
+   - role:
+     - transition into a real bassy beat
+   - what it tests:
+     - avoid triggering through noisy / textured lead-in
+     - begin triggering when the real beat arrives
+
+3. `Kick Drum BPM 100 - 30s`
+   - role:
+     - clean kick sanity baseline
+   - what it tests:
+     - do not make the detector so strict that obvious isolated kicks are missed
+
+Current important observation:
+
+- on the current live/debug detector, `Kick Drum BPM 100 - 30s` produced:
+  - `logged_accepted_count = 0`
+  - `replay_accepted_count = 0`
+- this means the current Pixelblaze gate is too strict for the easy baseline
+- this sample should be treated as a mandatory regression guard for future replay-side detector experiments
+
+Current evaluation rule for replay-side detector variants:
+
+- improve the hard Monolink false-trigger case
+- preserve or improve Becoming Insane beat-entry behavior
+- recover the clean Kick Drum baseline
+- only detector variants that satisfy all three should be considered for promotion back into Pixelblaze
+
 ### Why This Step Is Needed
 
 - the offline simulator and real Pixelblaze `frequencyData` behavior are not numerically equivalent
@@ -295,6 +428,42 @@ Current takeaway from this test:
 - the likely final detector will need:
   - some onset-based selectivity
   - plus stronger qualification that favors the main beat over isolated burst events
+
+### Monolink - 04m35s to 05m05s Frozen Python Baseline
+
+For the frozen Python detector:
+
+- `onset_plus_ratio_peak_picked_low_qualified`
+
+Expected behavior on this excerpt is:
+
+- no accepted flashes before about `23.15s`
+- `15` accepted flashes from about `23.15s` to `29.93s`
+- average spacing is about `0.485s`, which is about `124 BPM`
+
+Accepted hit times:
+
+- `23.150`
+- `23.638`
+- `24.126`
+- `24.613`
+- `25.101`
+- `25.588`
+- `26.122`
+- `26.540`
+- `27.028`
+- `27.516`
+- `28.003`
+- `28.491`
+- `28.955`
+- `29.443`
+- `29.931`
+
+This excerpt is the current reference check for Pixelblaze calibration:
+
+- break / riser should stay quiet
+- main beat return should trigger once per dominant beat
+- post-drop double-triggering should not occur
 
 ## Phase 2 Detector Directions
 

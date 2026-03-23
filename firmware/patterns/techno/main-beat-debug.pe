@@ -13,6 +13,9 @@ export var energyAverage = -1
 export var dbgLowRaw = 0
 export var dbgBodyRaw = 0
 export var dbgHighRaw = 0
+export var dbgSubRaw = 0
+export var dbgCoreRaw = 0
+export var dbgContamRaw = 0
 
 export var dbgLowNorm = 0
 export var dbgBodyNorm = 0
@@ -20,6 +23,23 @@ export var dbgHighNorm = 0
 export var dbgLowRise = 0
 export var dbgRatio = 0
 export var dbgRawRatio = 0
+export var dbgSubNorm = 0
+export var dbgCoreNorm = 0
+export var dbgContamNorm = 0
+export var dbgCoreRawRatio = 0
+export var dbgSubAvg = 0
+export var dbgCoreAvg = 0
+export var dbgSupportAvg = 0
+export var dbgSubOverAvg = 0
+export var dbgCoreOverAvg = 0
+export var dbgSupportOverAvg = 0
+export var dbgLowPeak = 0
+export var dbgBodyPeak = 0
+export var dbgHighPeak = 0
+export var dbgSubBodyRatio = 0
+export var dbgContamWeighted = 0
+export var dbgSupportRaw = 0
+export var dbgSupportDominance = 0
 
 export var dbgSignalActive = 0
 export var dbgHighDominant = 0
@@ -29,15 +49,44 @@ export var dbgCandidate = 0
 export var dbgAccepted = 0
 export var dbgPendingScore = 0
 export var dbgFlashStrength = 0
+export var dbgPendingActive = 0
+export var dbgPendingAgeMs = 0
+export var dbgRefractoryLeftMs = 0
+export var dbgPulseAgeMs = 0
+export var dbgPulse = 0
+export var dbgDetectorTickMs = 0
+
+export var dbgOnsetThreshold = 0
+export var dbgPeakPickWindowMs = 0
+export var dbgRefractoryMs = 0
+export var dbgEnergyFloor = 0
+export var dbgLowRawFloor = 0
+export var dbgLowBodyRawFloor = 0
+export var dbgSubBodyRatioThreshold = 0
+export var dbgSupportDominanceThreshold = 0
+export var dbgContamNormMax = 0
+export var dbgContamWeightedMax = 0
+export var dbgStrongCoreNormThreshold = 0
+export var dbgCoreRawRatioThreshold = 0
+export var dbgSubOverAvgThreshold = 0
+export var dbgCoreOverAvgThreshold = 0
+export var dbgSupportOverAvgThreshold = 0
 
 var pulse = 0
 var pulseAgeMs = 99999
 var flashStrength = 1
+var detectorAccumMs = 0
+var acceptedLatchMs = 0
 
-var lowPeak = 0.0001
+var subPeak = 0.0001
+var corePeak = 0.0001
 var bodyPeak = 0.0001
-var highPeak = 0.0001
-var prevLowNorm = 0
+var contamPeak = 0.0001
+var subAvg = 0.0001
+var coreAvg = 0.0001
+var supportAvg = 0.0001
+var prevCoreNorm = 0
+var prevCoreRaw = 0.0001
 
 var pendingActive = 0
 var pendingAgeMs = 0
@@ -46,16 +95,22 @@ var pendingBestStrength = 1
 
 var refractoryLeftMs = 0
 
-var onsetLowThreshold = 0.10
-var onsetThreshold = 0.035
-var ratioThreshold = 2.25
-var lowQualifiedThreshold = 0.18
-var lowBodyQualifiedThreshold = 0.28
+var onsetThreshold = 0.06
 var peakPickWindowMs = 240
 var refractoryMs = 180
 var energyFloor = 0.0012
-var lowRawFloor = 0.0005
-var lowBodyRawFloor = 0.0010
+var subRawFloor = 0.065
+var supportRawFloor = 0.22
+var subBodyRatioThreshold = 1.0
+var supportDominanceThreshold = 12
+var contamNormMax = 0.62
+var contamWeightedMax = 0.065
+var strongCoreNormThreshold = 0.72
+var coreRawRatioThreshold = 1.05
+var subOverAvgThreshold = 1.20
+var coreOverAvgThreshold = 1.08
+var supportOverAvgThreshold = 1.10
+var detectorTickMs = 50
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -63,18 +118,36 @@ function clamp01(v) {
   return v
 }
 
-export function beforeRender(delta) {
-  dbgAccepted = 0
-  pulseAgeMs += delta
+function detectorStep(delta) {
+  dbgOnsetThreshold = onsetThreshold
+  dbgPeakPickWindowMs = peakPickWindowMs
+  dbgRefractoryMs = refractoryMs
+  dbgEnergyFloor = energyFloor
+  dbgLowRawFloor = subRawFloor
+  dbgLowBodyRawFloor = supportRawFloor
+  dbgSubBodyRatioThreshold = subBodyRatioThreshold
+  dbgSupportDominanceThreshold = supportDominanceThreshold
+  dbgContamNormMax = contamNormMax
+  dbgContamWeightedMax = contamWeightedMax
+  dbgStrongCoreNormThreshold = strongCoreNormThreshold
+  dbgCoreRawRatioThreshold = coreRawRatioThreshold
+  dbgSubOverAvgThreshold = subOverAvgThreshold
+  dbgCoreOverAvgThreshold = coreOverAvgThreshold
+  dbgSupportOverAvgThreshold = supportOverAvgThreshold
+  dbgDetectorTickMs = detectorTickMs
 
   if (refractoryLeftMs > 0) {
     refractoryLeftMs -= delta
     if (refractoryLeftMs < 0) refractoryLeftMs = 0
   }
+  dbgRefractoryLeftMs = refractoryLeftMs
 
   dbgLowRaw = 0
   dbgBodyRaw = 0
   dbgHighRaw = 0
+  dbgSubRaw = 0
+  dbgCoreRaw = 0
+  dbgContamRaw = 0
   dbgSignalActive = 0
   dbgHighDominant = 0
   dbgLowQualified = 0
@@ -82,67 +155,106 @@ export function beforeRender(delta) {
   dbgCandidate = 0
 
   if (energyAverage >= 0) {
-    dbgLowRaw = (
-      frequencyData[0] + frequencyData[1] + frequencyData[2] +
-      frequencyData[3] + frequencyData[4]
-    ) / 5
+    dbgSubRaw = (frequencyData[0] + frequencyData[1] + frequencyData[2]) / 3
+
+    dbgCoreRaw = (
+      frequencyData[1] + frequencyData[2] + frequencyData[3] +
+      frequencyData[4] + frequencyData[5] + frequencyData[6]
+    ) / 6
 
     dbgBodyRaw = (
-      frequencyData[5] + frequencyData[6] + frequencyData[7] +
-      frequencyData[8] + frequencyData[9]
+      frequencyData[7] + frequencyData[8] + frequencyData[9] +
+      frequencyData[10] + frequencyData[11]
     ) / 5
 
-    dbgHighRaw = (
-      frequencyData[14] + frequencyData[15] + frequencyData[16] + frequencyData[17] +
-      frequencyData[18] + frequencyData[19] + frequencyData[20] + frequencyData[21] +
-      frequencyData[22] + frequencyData[23]
-    ) / 10
+    dbgContamRaw = (
+      frequencyData[21] + frequencyData[22] + frequencyData[23] +
+      frequencyData[24] + frequencyData[25]
+    ) / 5
+
+    dbgLowRaw = dbgSubRaw
+    dbgHighRaw = dbgContamRaw
+    dbgSupportRaw = dbgSubRaw + dbgCoreRaw + 0.35 * dbgBodyRaw
 
     dbgSignalActive = (
       (energyAverage > energyFloor) &&
-      ((dbgLowRaw > lowRawFloor) || ((dbgLowRaw + dbgBodyRaw) > lowBodyRawFloor))
+      (dbgSubRaw > 0.01) &&
+      (dbgSupportRaw > 0.08)
     )
   }
 
   var peakDecay = pow(0.55, delta / 1000)
 
-  lowPeak *= peakDecay
+  subPeak *= peakDecay
+  corePeak *= peakDecay
   bodyPeak *= peakDecay
-  highPeak *= peakDecay
+  contamPeak *= peakDecay
 
-  if (dbgLowRaw > lowPeak) lowPeak = dbgLowRaw
+  if (dbgSubRaw > subPeak) subPeak = dbgSubRaw
+  if (dbgCoreRaw > corePeak) corePeak = dbgCoreRaw
   if (dbgBodyRaw > bodyPeak) bodyPeak = dbgBodyRaw
-  if (dbgHighRaw > highPeak) highPeak = dbgHighRaw
+  if (dbgContamRaw > contamPeak) contamPeak = dbgContamRaw
 
-  if (lowPeak < 0.0001) lowPeak = 0.0001
+  if (subPeak < 0.0001) subPeak = 0.0001
+  if (corePeak < 0.0001) corePeak = 0.0001
   if (bodyPeak < 0.0001) bodyPeak = 0.0001
-  if (highPeak < 0.0001) highPeak = 0.0001
+  if (contamPeak < 0.0001) contamPeak = 0.0001
+  dbgLowPeak = subPeak
+  dbgHighPeak = contamPeak
+  dbgBodyPeak = bodyPeak
+  dbgCoreNorm = clamp01(dbgCoreRaw / corePeak)
+  dbgSubNorm = clamp01(dbgSubRaw / subPeak)
 
-  dbgLowNorm = clamp01(dbgLowRaw / lowPeak)
+  dbgLowNorm = dbgSubNorm
   dbgBodyNorm = clamp01(dbgBodyRaw / bodyPeak)
-  dbgHighNorm = clamp01(dbgHighRaw / highPeak)
-  dbgLowRise = dbgLowNorm - prevLowNorm
+  dbgContamNorm = clamp01(dbgContamRaw / contamPeak)
+  dbgHighNorm = dbgContamNorm
+  dbgLowRise = dbgCoreNorm - prevCoreNorm
   if (dbgLowRise < 0) dbgLowRise = 0
-  prevLowNorm = dbgLowNorm
+  prevCoreNorm = dbgCoreNorm
+  dbgCoreRawRatio = dbgCoreRaw / (prevCoreRaw + 0.0001)
+  prevCoreRaw = dbgCoreRaw
 
-  dbgRatio = (dbgLowNorm + dbgBodyNorm + 0.0001) / (dbgHighNorm + 0.0001)
-  dbgRawRatio = (dbgLowRaw + dbgBodyRaw + 0.0001) / (dbgHighRaw + 0.0001)
-  dbgHighDominant = dbgHighNorm > (dbgLowNorm + 0.22)
-  dbgRawBassSupport = (dbgLowRaw + 0.6 * dbgBodyRaw) > (dbgHighRaw * 0.9)
-  dbgLowQualified = (
-    (dbgLowNorm > lowQualifiedThreshold) ||
-    ((dbgLowNorm + dbgBodyNorm) > lowBodyQualifiedThreshold)
-  )
+  dbgSupportDominance = (dbgSupportRaw + 0.0001) / (dbgContamRaw + 0.0001)
+  dbgSubBodyRatio = (dbgSubRaw + 0.0001) / (dbgBodyRaw + 0.0001)
+  dbgContamWeighted = dbgContamRaw / (dbgSupportRaw + 0.0001)
+  var avgMix = delta / 1200
+  if (avgMix > 1) avgMix = 1
+  subAvg = max(0.0001, subAvg * (1 - avgMix) + dbgSubRaw * avgMix)
+  coreAvg = max(0.0001, coreAvg * (1 - avgMix) + dbgCoreRaw * avgMix)
+  supportAvg = max(0.0001, supportAvg * (1 - avgMix) + dbgSupportRaw * avgMix)
+  dbgSubAvg = subAvg
+  dbgCoreAvg = coreAvg
+  dbgSupportAvg = supportAvg
+  dbgSubOverAvg = dbgSubRaw / subAvg
+  dbgCoreOverAvg = dbgCoreRaw / coreAvg
+  dbgSupportOverAvg = dbgSupportRaw / supportAvg
+  dbgRatio = dbgSupportDominance
+  dbgRawRatio = dbgSupportDominance
+  dbgHighDominant = dbgContamNorm > contamNormMax
+  dbgRawBassSupport = dbgSupportDominance > supportDominanceThreshold
+  dbgLowQualified = (dbgSubRaw > subRawFloor) && (dbgSupportRaw > supportRawFloor)
 
   dbgCandidate = (
     dbgSignalActive &&
-    (dbgLowNorm > onsetLowThreshold) &&
-    (dbgLowRise > onsetThreshold) &&
-    (dbgRatio > ratioThreshold) &&
-    (dbgRawRatio > 0.95) &&
+    (dbgSubRaw > subRawFloor) &&
+    (dbgSupportRaw > supportRawFloor) &&
+    (dbgSupportDominance > supportDominanceThreshold) &&
+    (dbgSubBodyRatio > subBodyRatioThreshold) &&
+    (dbgContamNorm < contamNormMax) &&
+    (dbgContamWeighted < contamWeightedMax) &&
+    (dbgSubOverAvg > subOverAvgThreshold) &&
+    (dbgCoreOverAvg > coreOverAvgThreshold) &&
+    (dbgSupportOverAvg > supportOverAvgThreshold) &&
     dbgRawBassSupport &&
     dbgLowQualified &&
-    !dbgHighDominant
+    (
+      (dbgLowRise > onsetThreshold) ||
+      (
+        (dbgCoreNorm > strongCoreNormThreshold) &&
+        (dbgCoreRawRatio > coreRawRatioThreshold)
+      )
+    )
   )
 
   if (!dbgSignalActive) {
@@ -150,14 +262,17 @@ export function beforeRender(delta) {
     pendingAgeMs = 0
     pendingBestScore = 0
     pendingBestStrength = 1
-    prevLowNorm *= 0.5
+    prevCoreNorm *= 0.5
+    prevCoreRaw *= 0.7
   }
 
   if (dbgCandidate) {
-    var ratioClamped = dbgRatio
-    if (ratioClamped > 4) ratioClamped = 4
-    var score = dbgLowRise * (dbgLowNorm + 0.5 * dbgBodyNorm) * ratioClamped
-    var strength = clamp01(0.55 + 0.35 * dbgLowNorm + 0.10 * dbgBodyNorm)
+    var dominanceClamped = dbgSupportDominance
+    if (dominanceClamped > 20) dominanceClamped = 20
+    var onsetTerm = dbgLowRise
+    if (onsetTerm < onsetThreshold) onsetTerm = onsetThreshold
+    var score = onsetTerm * dbgSupportRaw * dominanceClamped * dbgCoreRawRatio * dbgSupportOverAvg * (1 - clamp01(dbgContamWeighted * 8))
+    var strength = clamp01(0.45 + 1.2 * dbgSubRaw + 0.8 * dbgCoreRaw + 0.25 * dbgBodyRaw)
 
     if (!pendingActive) {
       pendingActive = 1
@@ -169,8 +284,9 @@ export function beforeRender(delta) {
       pendingBestStrength = strength
     }
   }
-
   dbgPendingScore = pendingBestScore
+  dbgPendingActive = pendingActive
+  dbgPendingAgeMs = pendingAgeMs
 
   if (pendingActive) {
     pendingAgeMs += delta
@@ -179,6 +295,7 @@ export function beforeRender(delta) {
         pulseAgeMs = 0
         flashStrength = pendingBestStrength
         refractoryLeftMs = refractoryMs
+        acceptedLatchMs = detectorTickMs
         dbgAccepted = 1
       }
       pendingActive = 0
@@ -189,10 +306,28 @@ export function beforeRender(delta) {
   }
 
   dbgFlashStrength = flashStrength
+}
 
-  // Short bright pulse only so accepted triggers are visible while logging.
-  if (pulseAgeMs <= 90) pulse = flashStrength
+export function beforeRender(delta) {
+  pulseAgeMs += delta
+  dbgPulseAgeMs = pulseAgeMs
+
+  if (acceptedLatchMs > 0) {
+    acceptedLatchMs -= delta
+    if (acceptedLatchMs < 0) acceptedLatchMs = 0
+  }
+  dbgAccepted = acceptedLatchMs > 0
+
+  detectorAccumMs += delta
+  while (detectorAccumMs >= detectorTickMs) {
+    detectorAccumMs -= detectorTickMs
+    detectorStep(detectorTickMs)
+  }
+
+  // Make the visible flash match the accepted-event latch exactly.
+  if (dbgAccepted) pulse = flashStrength
   else pulse = 0
+  dbgPulse = pulse
 }
 
 export function render(index) {

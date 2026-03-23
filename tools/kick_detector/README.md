@@ -86,6 +86,25 @@ The capture includes:
 - flattened `frequencyData_00` ... `frequencyData_31`
 - all exported `dbg...` detector intermediates
 
+## Replaying a Pixelblaze Capture
+
+You can replay the current Pixelblaze detector logic against a captured CSV:
+
+```bash
+python tools/kick_detector/replay_pixelblaze_capture.py tools/kick_detector/output/monolink-drop-capture.csv --output-prefix tools/kick_detector/output/monolink-drop-replay
+```
+
+This prints a summary of:
+
+- how often replayed `candidate` matches logged `dbgCandidate`
+- how often replayed `accepted` matches logged `dbgAccepted`
+- total replayed vs logged candidate/accepted counts
+
+And optionally writes:
+
+- replay row CSV
+- replay summary JSON
+
 ## Outputs
 
 By default artifacts are written to:

@@ -1,11 +1,13 @@
 {
-  "rows": 592,
-  "candidate_match_rows": 534,
-  "accepted_match_rows": 558,
-  "candidate_match_ratio": 0.902027027027027,
-  "accepted_match_ratio": 0.9425675675675675,
-  "replay_candidate_count": 58,
-  "logged_candidate_count": 14,
-  "replay_accepted_count": 35,
+  "rows": 331,
+  "active_start_s": 1.8607399463653564,
+  "active_end_s": 31.86982035636902,
+  "candidate_match_rows": 268,
+  "accepted_match_rows": 292,
+  "candidate_match_ratio": 0.8096676737160121,
+  "accepted_match_ratio": 0.8821752265861027,
+  "replay_candidate_count": 66,
+  "logged_candidate_count": 15,
+  "replay_accepted_count": 34,
   "logged_accepted_count": 7
 }

@@ -23,6 +23,7 @@ Project-specific memory and conventions for `LED_hat_small`.
 - Current files:
   - `firmware/patterns/techno/tunnel-scanner.pe`
   - `firmware/patterns/techno/main-beat-flash.pe`
+  - `firmware/patterns/techno/main-beat-debug.pe`
   - `firmware/patterns/general/aurora.pe`
   - `firmware/patterns/general/waves.pe`
   - `firmware/patterns/general/ukrainian-flag.pe`
@@ -66,6 +67,12 @@ Project-specific memory and conventions for `LED_hat_small`.
 ## Kick Detector Baseline
 - The frozen offline Python reference detector is:
   - `onset_plus_ratio_peak_picked_low_qualified`
+- Current calibration excerpt baseline:
+  - `Monolink - Return To Oz - 04m35s-05m05s`
+  - expected Python result:
+    - no flashes before about `23.15s`
+    - `15` flashes from about `23.15s` to `29.93s`
+    - spacing about `0.485s` (`~124 BPM`)
 - Porting intent for Pixelblaze:
   - derive low/body/high energy from `frequencyData`
   - compute low-band onset from normalized low energy rise
@@ -74,6 +81,34 @@ Project-specific memory and conventions for `LED_hat_small`.
   - validate with a minimal whole-hat flash pattern before adding more visual complexity
 - Initial live port target:
   - `firmware/patterns/techno/main-beat-flash.pe`
+- Current calibration workflow:
+  - `firmware/patterns/techno/main-beat-debug.pe` exports raw inputs, detector features, thresholds, and trigger flags
+  - `tools/kick_detector/capture_pixelblaze_vars.py` records exported vars to CSV / JSONL
+  - `tools/kick_detector/replay_pixelblaze_capture.py` replays the Pixelblaze detector offline against captured export data
+  - detector logic is quantized to a fixed `50 ms` tick during calibration so capture and replay align
+  - `dbgAccepted` is latched for one detector tick so logged accepted events match visible flashes more closely
+- Current live/debug detector grouping on Pixelblaze:
+  - `sub = bins 0..2`
+  - `core = bins 1..6`
+  - `body = bins 7..11`
+  - neutral mids `12..20` ignored
+  - `contamination = bins 21..25`
+- Current workflow rule:
+  - detector ideas should be tested in replay against captured Pixelblaze exports first
+  - only detector changes that clearly improve replay/logged behavior should be promoted back into Pixelblaze patterns
+- Recently tried and reverted:
+  - `supportRawRatio` short-term growth gate
+  - it reduced some false triggers but hurt post-drop recall too much
+- Current hardware calibration reference set:
+  - `Monolink - Return To Oz - 04m35s-05m05s`
+    - hard false-trigger / pre-drop case
+  - `Becoming Insane - 03m45s-04m15s`
+    - transition into real beat case
+  - `Kick Drum BPM 100 - 30s`
+    - clean kick sanity baseline
+- Important current guardrail:
+  - the current live/debug detector fully misses `Kick Drum BPM 100 - 30s`
+  - future replay-side detector experiments must recover this easy baseline before being promoted back to Pixelblaze
 
 ## Documentation Update Rule
 - If pattern folder layout, sensor variable usage, or control philosophy changes, update:

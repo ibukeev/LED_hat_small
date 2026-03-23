@@ -15,11 +15,17 @@ export var energyAverage = -1
 var pulse = 0
 var pulseAgeMs = 99999
 var flashStrength = 1
+var detectorAccumMs = 0
 
-var lowPeak = 0.0001
+var subPeak = 0.0001
+var corePeak = 0.0001
 var bodyPeak = 0.0001
-var highPeak = 0.0001
-var prevLowNorm = 0
+var contamPeak = 0.0001
+var subAvg = 0.0001
+var coreAvg = 0.0001
+var supportAvg = 0.0001
+var prevCoreNorm = 0
+var prevCoreRaw = 0.0001
 
 var pendingActive = 0
 var pendingAgeMs = 0
@@ -28,16 +34,22 @@ var pendingBestStrength = 1
 
 var refractoryLeftMs = 0
 
-var onsetLowThreshold = 0.10
-var onsetThreshold = 0.035
-var ratioThreshold = 2.25
-var lowQualifiedThreshold = 0.18
-var lowBodyQualifiedThreshold = 0.28
+var onsetThreshold = 0.06
 var peakPickWindowMs = 240
 var refractoryMs = 180
 var energyFloor = 0.0012
-var lowRawFloor = 0.0005
-var lowBodyRawFloor = 0.0010
+var subRawFloor = 0.065
+var supportRawFloor = 0.22
+var supportDominanceThreshold = 12
+var subBodyRatioThreshold = 1.0
+var contamNormMax = 0.62
+var contamWeightedMax = 0.065
+var strongCoreNormThreshold = 0.72
+var coreRawRatioThreshold = 1.05
+var subOverAvgThreshold = 1.20
+var coreOverAvgThreshold = 1.08
+var supportOverAvgThreshold = 1.10
+var detectorTickMs = 50
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -45,82 +57,103 @@ function clamp01(v) {
   return v
 }
 
-export function beforeRender(delta) {
-  pulseAgeMs += delta
-
+function detectorStep(delta) {
   if (refractoryLeftMs > 0) {
     refractoryLeftMs -= delta
     if (refractoryLeftMs < 0) refractoryLeftMs = 0
   }
 
-  var lowRaw = 0
+  var subRaw = 0
+  var coreRaw = 0
   var bodyRaw = 0
-  var highRaw = 0
+  var contamRaw = 0
   var signalActive = 0
 
   if (energyAverage >= 0) {
-    lowRaw = (
-      frequencyData[0] + frequencyData[1] + frequencyData[2] +
-      frequencyData[3] + frequencyData[4]
-    ) / 5
+    subRaw = (frequencyData[0] + frequencyData[1] + frequencyData[2]) / 3
+
+    coreRaw = (
+      frequencyData[1] + frequencyData[2] + frequencyData[3] +
+      frequencyData[4] + frequencyData[5] + frequencyData[6]
+    ) / 6
 
     bodyRaw = (
-      frequencyData[5] + frequencyData[6] + frequencyData[7] +
-      frequencyData[8] + frequencyData[9]
+      frequencyData[7] + frequencyData[8] + frequencyData[9] +
+      frequencyData[10] + frequencyData[11]
     ) / 5
 
-    highRaw = (
-      frequencyData[14] + frequencyData[15] + frequencyData[16] + frequencyData[17] +
-      frequencyData[18] + frequencyData[19] + frequencyData[20] + frequencyData[21] +
-      frequencyData[22] + frequencyData[23]
-    ) / 10
+    contamRaw = (
+      frequencyData[21] + frequencyData[22] + frequencyData[23] +
+      frequencyData[24] + frequencyData[25]
+    ) / 5
+
+    var supportRaw = subRaw + coreRaw + 0.35 * bodyRaw
 
     signalActive = (
       (energyAverage > energyFloor) &&
-      ((lowRaw > lowRawFloor) || ((lowRaw + bodyRaw) > lowBodyRawFloor))
+      (subRaw > 0.01) &&
+      (supportRaw > 0.08)
     )
   }
 
-  // Use slowly decaying peaks to approximate the Python-side per-band normalization.
   var peakDecay = pow(0.55, delta / 1000)
 
-  lowPeak *= peakDecay
+  subPeak *= peakDecay
+  corePeak *= peakDecay
   bodyPeak *= peakDecay
-  highPeak *= peakDecay
+  contamPeak *= peakDecay
 
-  if (lowRaw > lowPeak) lowPeak = lowRaw
+  if (subRaw > subPeak) subPeak = subRaw
+  if (coreRaw > corePeak) corePeak = coreRaw
   if (bodyRaw > bodyPeak) bodyPeak = bodyRaw
-  if (highRaw > highPeak) highPeak = highRaw
+  if (contamRaw > contamPeak) contamPeak = contamRaw
 
-  if (lowPeak < 0.0001) lowPeak = 0.0001
+  if (subPeak < 0.0001) subPeak = 0.0001
+  if (corePeak < 0.0001) corePeak = 0.0001
   if (bodyPeak < 0.0001) bodyPeak = 0.0001
-  if (highPeak < 0.0001) highPeak = 0.0001
+  if (contamPeak < 0.0001) contamPeak = 0.0001
 
-  var lowNorm = clamp01(lowRaw / lowPeak)
+  var subNorm = clamp01(subRaw / subPeak)
+  var coreNorm = clamp01(coreRaw / corePeak)
   var bodyNorm = clamp01(bodyRaw / bodyPeak)
-  var highNorm = clamp01(highRaw / highPeak)
-  var lowRise = lowNorm - prevLowNorm
-  if (lowRise < 0) lowRise = 0
-  prevLowNorm = lowNorm
+  var contamNorm = clamp01(contamRaw / contamPeak)
+  var coreRise = coreNorm - prevCoreNorm
+  if (coreRise < 0) coreRise = 0
+  prevCoreNorm = coreNorm
+  var coreRawRatio = coreRaw / (prevCoreRaw + 0.0001)
+  prevCoreRaw = coreRaw
 
-  var ratio = (lowNorm + bodyNorm + 0.0001) / (highNorm + 0.0001)
-  var rawRatio = (lowRaw + bodyRaw + 0.0001) / (highRaw + 0.0001)
-  var highDominant = highNorm > (lowNorm + 0.22)
-  var rawBassSupport = (lowRaw + 0.6 * bodyRaw) > (highRaw * 0.9)
-  var lowQualified = (
-    (lowNorm > lowQualifiedThreshold) ||
-    ((lowNorm + bodyNorm) > lowBodyQualifiedThreshold)
-  )
+  var supportRaw = subRaw + coreRaw + 0.35 * bodyRaw
+  var supportDominance = (supportRaw + 0.0001) / (contamRaw + 0.0001)
+  var subBodyRatio = (subRaw + 0.0001) / (bodyRaw + 0.0001)
+  var contamWeighted = contamRaw / (supportRaw + 0.0001)
+  var avgMix = delta / 1200
+  if (avgMix > 1) avgMix = 1
+  subAvg = max(0.0001, subAvg * (1 - avgMix) + subRaw * avgMix)
+  coreAvg = max(0.0001, coreAvg * (1 - avgMix) + coreRaw * avgMix)
+  supportAvg = max(0.0001, supportAvg * (1 - avgMix) + supportRaw * avgMix)
+  var subOverAvg = subRaw / subAvg
+  var coreOverAvg = coreRaw / coreAvg
+  var supportOverAvg = supportRaw / supportAvg
 
   var candidate = (
     signalActive &&
-    (lowNorm > onsetLowThreshold) &&
-    (lowRise > onsetThreshold) &&
-    (ratio > ratioThreshold) &&
-    (rawRatio > 0.95) &&
-    rawBassSupport &&
-    lowQualified &&
-    !highDominant
+    (subRaw > subRawFloor) &&
+    (supportRaw > supportRawFloor) &&
+    (supportDominance > supportDominanceThreshold) &&
+    (subBodyRatio > subBodyRatioThreshold) &&
+    (contamNorm < contamNormMax) &&
+    (contamWeighted < contamWeightedMax) &&
+    (subOverAvg > subOverAvgThreshold) &&
+    (coreOverAvg > coreOverAvgThreshold) &&
+    (supportOverAvg > supportOverAvgThreshold) &&
+    (
+      (coreRise > onsetThreshold) ||
+      (
+        (coreNorm > strongCoreNormThreshold) &&
+        (coreRawRatio > coreRawRatioThreshold)
+      )
+    )
   )
 
   if (!signalActive) {
@@ -128,16 +161,20 @@ export function beforeRender(delta) {
     pendingAgeMs = 0
     pendingBestScore = 0
     pendingBestStrength = 1
-    prevLowNorm *= 0.5
+    prevCoreNorm *= 0.5
+    prevCoreRaw *= 0.7
   }
 
   if (candidate) {
-    var ratioClamped = ratio
-    if (ratioClamped > 4) ratioClamped = 4
+    var dominanceClamped = supportDominance
+    if (dominanceClamped > 20) dominanceClamped = 20
 
-    // Favor events with strong onset, strong low/body energy, and real bass dominance.
-    var score = lowRise * (lowNorm + 0.5 * bodyNorm) * ratioClamped
-    var strength = clamp01(0.55 + 0.35 * lowNorm + 0.10 * bodyNorm)
+    // Favor bass-supported events with low contamination. Core rise helps,
+    // but strong steady kicks can still win through the core norm term.
+    var onsetTerm = coreRise
+    if (onsetTerm < onsetThreshold) onsetTerm = onsetThreshold
+    var score = onsetTerm * supportRaw * dominanceClamped * coreRawRatio * supportOverAvg * (1 - clamp01(contamWeighted * 8))
+    var strength = clamp01(0.45 + 1.2 * subRaw + 0.8 * coreRaw + 0.25 * bodyRaw)
 
     if (!pendingActive) {
       pendingActive = 1
@@ -149,7 +186,6 @@ export function beforeRender(delta) {
       pendingBestStrength = strength
     }
   }
-
   if (pendingActive) {
     pendingAgeMs += delta
     if (pendingAgeMs >= peakPickWindowMs) {
@@ -163,6 +199,15 @@ export function beforeRender(delta) {
       pendingBestScore = 0
       pendingBestStrength = 1
     }
+  }
+}
+
+export function beforeRender(delta) {
+  pulseAgeMs += delta
+  detectorAccumMs += delta
+  while (detectorAccumMs >= detectorTickMs) {
+    detectorAccumMs -= detectorTickMs
+    detectorStep(detectorTickMs)
   }
 
   if (pulseAgeMs <= holdMs) pulse = flashStrength
