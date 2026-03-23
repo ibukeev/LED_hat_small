@@ -4,6 +4,7 @@ Data/example_tracks/*.wav
 Data/example_tracks/*.m4a
 Data/example_tracks/*.flac
 Data/example_tracks/*.ogg
+Data/example_tracks/Full audio tracks/
 
 # Keep external visualizer exports local unless explicitly cleared for redistribution.
 Data/example_tracks/example_visualizer/

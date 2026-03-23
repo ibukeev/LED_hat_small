@@ -100,6 +100,129 @@ Once one detector clearly performs best:
 - plots / trigger outputs for a small test corpus
 - final documented detector logic to port into Pixelblaze
 
+## Evaluation Notes
+
+### Howling - 00m15s to 00m45s
+
+- `0s` to about `15s` in the excerpt:
+  - main kicks are clear and isolated
+  - all four Phase 1 detectors behave well
+- about `18s` to `30s` in the excerpt:
+  - additional rhythmic and transient content appears between the main kicks
+  - current detectors begin firing between the main beat pulses
+
+Current requirement clarified from this test:
+
+- the target is not generic percussive detection
+- the detector should prefer the main beat only and suppress intermediate rhythmic events where possible
+
+### Howling - 02m30s to 03m00s
+
+- this is a denser, harder real-music test with competing rhythmic material across many bands
+- `low_band_threshold` and `low_band_rising_edge` are clearly too chatty here
+- the meaningful comparison is between:
+  - `bass_vs_high_ratio`
+  - `onset_plus_ratio`
+
+Observed tradeoff:
+
+- `bass_vs_high_ratio`
+  - better recall
+  - still fires on some intermediate events between the strongest beat pulses
+- `onset_plus_ratio`
+  - better precision
+  - is closer to main-beat-only behavior in this window
+  - may miss some valid kicks because it is stricter
+
+Current takeaway from this test:
+
+- if the target is main-beat-only response, `onset_plus_ratio` is the stronger Phase 1 candidate in this window
+- the likely next step is not to use it unchanged, but to start from it and tune for fewer missed valid kicks
+
+### Howling - 04m00s to 04m30s
+
+- this excerpt is primarily a transition and interlude test
+- about `0s` to `3.5s`:
+  - regular kick section
+  - all detectors behave reasonably
+- about `3.5s` to `11s`:
+  - low-activity / interlude region
+  - detectors mostly stop firing, which is the desired behavior
+- after about `11s`:
+  - beat returns
+  - looser detectors begin firing more densely again
+  - `onset_plus_ratio` remains the sparsest and closest to main-beat-only behavior
+
+Current takeaway from this test:
+
+- silence and interlude handling are acceptable in the current Phase 1 pipeline
+- the main unresolved problem is still main-beat-only selectivity once denser rhythmic content returns
+
+### Monolink - 00m00s to 00m30s
+
+- this is a clean baseline window with a regular repeating kick structure from the start
+- the low-frequency kick columns are clear in the heatmap
+- feature traces are stable and periodic
+- all four detectors align closely and behave acceptably
+
+Current takeaway from this test:
+
+- this window is useful as a sanity check and baseline
+- it does not meaningfully differentiate detector quality because the section is too easy
+
+### Monolink - 01m00s to 01m30s
+
+- this window adds a softer lead-in before the beat is fully established
+- about `0s` to `2s`:
+  - lower-energy opening
+  - detectors mostly stay quiet until the beat becomes clear
+- after about `2s`:
+  - regular kick structure is established
+  - all four detectors align closely again
+
+Current takeaway from this test:
+
+- startup and beat-entry behavior are acceptable in this section
+- like the previous Monolink baseline window, this excerpt is still too easy to strongly differentiate the detector variants
+
+### Monolink - 02m00s to 02m30s
+
+- the main beat is present through most of the excerpt, but appears to stop around `23s`
+- after about `23s`:
+  - the low-frequency kick columns largely disappear
+  - remaining activity appears to be lighter rhythmic material such as hats or higher-frequency texture
+
+Observed implication:
+
+- detectors should largely stop firing once the main bassy beat disappears
+- continued triggering in that tail region should be treated as false positive behavior relative to the project goal
+
+Current takeaway from this test:
+
+- `low_band_threshold` and `low_band_rising_edge` are too permissive in the later part of the window
+- stronger bass-dominance filtering appears valuable here because it helps suppress non-kick rhythmic activity after the main beat ends
+
+### Monolink - 04m35s to 05m05s
+
+- this excerpt is a strong transition test with:
+  - isolated bursty transients near the beginning
+  - a long riser / build section
+  - a clear main beat return around `23s`
+
+Observed behavior:
+
+- during the long riser, detectors mostly stay quiet, which is desirable
+- when the main beat returns, detectors begin firing again, which is also desirable
+- `onset_plus_ratio` produces an early trigger on an isolated transient burst near the start of the excerpt
+
+Current takeaway from this test:
+
+- `onset_plus_ratio` is not universally best
+- it helps in denser beat sections, but can still be fooled by strong isolated transients that are not the main beat
+- the likely final detector will need:
+  - some onset-based selectivity
+  - plus stronger qualification that favors the main beat over isolated burst events
+
 ## Implementation Plan
 
 ### Example Track Corpus
