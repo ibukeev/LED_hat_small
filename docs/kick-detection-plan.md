@@ -86,6 +86,69 @@ Once one detector clearly performs best:
 3. Port the logic into Pixelblaze using similar feature semantics
 4. Validate on hardware with the same test clips / speaker setup
 
+## Pixelblaze Calibration Step
+
+The first direct Pixelblaze port exposed a gap between the offline simulator and real Pixelblaze behavior. The next step is to calibrate against real on-device data rather than continue blind threshold tuning.
+
+### Goal
+
+Capture real Pixelblaze Sensor Expansion Board values during playback of known test excerpts and replay them in Python so detector tuning can be done against actual Pixelblaze-like input streams.
+
+### Dedicated Logger Pattern
+
+Use:
+
+- `firmware/patterns/techno/main-beat-debug.pe`
+
+This debug pattern exports:
+
+- `frequencyData[32]`
+- `energyAverage`
+- detector intermediates such as:
+  - `dbgLowRaw`
+  - `dbgBodyRaw`
+  - `dbgHighRaw`
+  - `dbgLowNorm`
+  - `dbgBodyNorm`
+  - `dbgHighNorm`
+  - `dbgLowRise`
+  - `dbgRatio`
+  - `dbgRawRatio`
+  - `dbgSignalActive`
+  - `dbgHighDominant`
+  - `dbgLowQualified`
+  - `dbgRawBassSupport`
+  - `dbgCandidate`
+  - `dbgAccepted`
+
+### Workflow
+
+1. Load `main-beat-debug.pe` onto Pixelblaze
+2. Play a known excerpt already used in the Python evaluation corpus
+3. Capture exported vars over time from Pixelblaze
+4. Save the captured stream to a machine-readable file
+5. Replay that stream in Python
+6. Compare:
+   - simulated Python features
+   - real Pixelblaze features
+   - detector decisions
+7. Adjust the Python-side Pixelblaze approximation before further on-device tuning
+
+### Why This Step Is Needed
+
+- the offline simulator and real Pixelblaze `frequencyData` behavior are not numerically equivalent
+- real-time rolling normalization on Pixelblaze drifts differently during breaks, risers, and drops
+- direct detector porting without this calibration led to:
+  - false triggers during breaks and pre-drop sections
+  - overreaction after drops
+  - behavior that diverged from the Python evaluation
+
+### Success Criteria
+
+- captured Pixelblaze logs can be replayed offline in Python
+- the replayed data explains the observed divergence between the simulator and on-device behavior
+- the offline model is updated so further tuning is driven by real Pixelblaze-like inputs instead of guesswork
+
 ## Guardrails
 
 - Keep the Python detector simple enough to port
@@ -106,9 +169,9 @@ Once one detector clearly performs best:
 - current frozen Python reference:
   - `onset_plus_ratio_peak_picked_low_qualified`
 - next phase:
-  - simplify this reference detector into a Pixelblaze-portable form
-  - implement it in one audio-reactive Pixelblaze pattern
-  - validate live behavior on the hat
+  - capture real Pixelblaze sensor and detector data from the hat
+  - replay that data in Python to calibrate the offline model against actual Pixelblaze behavior
+  - then simplify the calibrated reference detector into a Pixelblaze-portable form
 
 ## Evaluation Notes
 

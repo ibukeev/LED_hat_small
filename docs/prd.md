@@ -61,6 +61,7 @@ LED Hat Small is a lightweight, wearable LED hat designed for festivals, night e
 | Patterns | Curated list of audio-reactive patterns | A curated set of audio-reactive patterns is selected and works well enough for real-world use on the hat. | P1 | In Progress |
 | Patterns | Advanced reactive pattern set | Additional audio-reactive pattern families are added after detector behavior becomes trustworthy. | P2 | Not Started |
 | Audio Reactivity | Python kick detection prototype | Offline Python tooling accepts test audio files and produces detector outputs that can be inspected and tuned. A reference detector is selected and frozen for porting. | P1 | Done |
+| Audio Reactivity | Capture Pixelblaze sensor logs and calibrate replay | Real Pixelblaze `frequencyData` and detector intermediates are captured from the hat, replayed in Python, and used to align the offline detector model with actual Pixelblaze behavior. | P1 | In Progress |
 | Audio Reactivity | Port chosen detector to Pixelblaze | The frozen Python reference detector is simplified and ported into one Pixelblaze audio-reactive pattern, then validated on hardware against the target kick behavior. | P1 | In Progress |
 | Audio Reactivity | Motion-reactive pattern experiments | Accelerometer-based behavior is tested in at least one pattern and evaluated for real user value. | P1 | Not Started |
 | Expansion | Cross-device sync | Hat can synchronize patterns or timing with future wearable LED devices. | P2 | Not Started |

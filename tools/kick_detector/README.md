@@ -34,6 +34,13 @@ python3 -m venv .venv
 pip install librosa matplotlib numpy
 ```
 
+For Pixelblaze capture logging:
+
+```bash
+. .venv/bin/activate
+pip install pixelblaze-client
+```
+
 ## Usage
 
 Analyze the example corpus:
@@ -53,6 +60,31 @@ Write output somewhere else:
 ```bash
 python tools/kick_detector/analyze.py Data/example_tracks --output-dir /tmp/kick-detector-output
 ```
+
+## Capturing Real Pixelblaze Vars
+
+Use the dedicated debug pattern:
+
+- `firmware/patterns/techno/main-beat-debug.pe`
+
+Then capture exported vars over time:
+
+```bash
+. .venv/bin/activate
+python tools/kick_detector/capture_pixelblaze_vars.py 192.168.1.50 --duration 35 --interval 0.05 --output-prefix tools/kick_detector/output/monolink-drop-capture
+```
+
+This writes:
+
+- `*.jsonl`
+- `*.csv`
+
+The capture includes:
+
+- timestamps
+- `energyAverage`
+- flattened `frequencyData_00` ... `frequencyData_31`
+- all exported `dbg...` detector intermediates
 
 ## Outputs
 

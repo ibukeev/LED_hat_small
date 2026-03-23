@@ -1,16 +1,34 @@
-// Pattern: Main Beat Flash
-// Description: Clean whole-hat flash driven by the frozen Python kick detector port baseline.
+// Pattern: Main Beat Debug
+// Description: Minimal debug/logger pattern exposing on-device detector intermediates in Vars Watch.
 // Version: 0.1
 
-var level = 0.9
-var holdMs = 115
-var fallMs = 492
-var colorHue = 0.62
-var colorSat = 0.95
+var level = 0.35
+var colorHue = 0.03
+var colorSat = 1
 
 // Values populated by Pixelblaze Sensor Expansion Board when connected.
 export var frequencyData = array(32)
 export var energyAverage = -1
+
+export var dbgLowRaw = 0
+export var dbgBodyRaw = 0
+export var dbgHighRaw = 0
+
+export var dbgLowNorm = 0
+export var dbgBodyNorm = 0
+export var dbgHighNorm = 0
+export var dbgLowRise = 0
+export var dbgRatio = 0
+export var dbgRawRatio = 0
+
+export var dbgSignalActive = 0
+export var dbgHighDominant = 0
+export var dbgLowQualified = 0
+export var dbgRawBassSupport = 0
+export var dbgCandidate = 0
+export var dbgAccepted = 0
+export var dbgPendingScore = 0
+export var dbgFlashStrength = 0
 
 var pulse = 0
 var pulseAgeMs = 99999
@@ -46,6 +64,7 @@ function clamp01(v) {
 }
 
 export function beforeRender(delta) {
+  dbgAccepted = 0
   pulseAgeMs += delta
 
   if (refractoryLeftMs > 0) {
@@ -53,77 +72,80 @@ export function beforeRender(delta) {
     if (refractoryLeftMs < 0) refractoryLeftMs = 0
   }
 
-  var lowRaw = 0
-  var bodyRaw = 0
-  var highRaw = 0
-  var signalActive = 0
+  dbgLowRaw = 0
+  dbgBodyRaw = 0
+  dbgHighRaw = 0
+  dbgSignalActive = 0
+  dbgHighDominant = 0
+  dbgLowQualified = 0
+  dbgRawBassSupport = 0
+  dbgCandidate = 0
 
   if (energyAverage >= 0) {
-    lowRaw = (
+    dbgLowRaw = (
       frequencyData[0] + frequencyData[1] + frequencyData[2] +
       frequencyData[3] + frequencyData[4]
     ) / 5
 
-    bodyRaw = (
+    dbgBodyRaw = (
       frequencyData[5] + frequencyData[6] + frequencyData[7] +
       frequencyData[8] + frequencyData[9]
     ) / 5
 
-    highRaw = (
+    dbgHighRaw = (
       frequencyData[14] + frequencyData[15] + frequencyData[16] + frequencyData[17] +
       frequencyData[18] + frequencyData[19] + frequencyData[20] + frequencyData[21] +
       frequencyData[22] + frequencyData[23]
     ) / 10
 
-    signalActive = (
+    dbgSignalActive = (
       (energyAverage > energyFloor) &&
-      ((lowRaw > lowRawFloor) || ((lowRaw + bodyRaw) > lowBodyRawFloor))
+      ((dbgLowRaw > lowRawFloor) || ((dbgLowRaw + dbgBodyRaw) > lowBodyRawFloor))
     )
   }
 
-  // Use slowly decaying peaks to approximate the Python-side per-band normalization.
   var peakDecay = pow(0.55, delta / 1000)
 
   lowPeak *= peakDecay
   bodyPeak *= peakDecay
   highPeak *= peakDecay
 
-  if (lowRaw > lowPeak) lowPeak = lowRaw
-  if (bodyRaw > bodyPeak) bodyPeak = bodyRaw
-  if (highRaw > highPeak) highPeak = highRaw
+  if (dbgLowRaw > lowPeak) lowPeak = dbgLowRaw
+  if (dbgBodyRaw > bodyPeak) bodyPeak = dbgBodyRaw
+  if (dbgHighRaw > highPeak) highPeak = dbgHighRaw
 
   if (lowPeak < 0.0001) lowPeak = 0.0001
   if (bodyPeak < 0.0001) bodyPeak = 0.0001
   if (highPeak < 0.0001) highPeak = 0.0001
 
-  var lowNorm = clamp01(lowRaw / lowPeak)
-  var bodyNorm = clamp01(bodyRaw / bodyPeak)
-  var highNorm = clamp01(highRaw / highPeak)
-  var lowRise = lowNorm - prevLowNorm
-  if (lowRise < 0) lowRise = 0
-  prevLowNorm = lowNorm
+  dbgLowNorm = clamp01(dbgLowRaw / lowPeak)
+  dbgBodyNorm = clamp01(dbgBodyRaw / bodyPeak)
+  dbgHighNorm = clamp01(dbgHighRaw / highPeak)
+  dbgLowRise = dbgLowNorm - prevLowNorm
+  if (dbgLowRise < 0) dbgLowRise = 0
+  prevLowNorm = dbgLowNorm
 
-  var ratio = (lowNorm + bodyNorm + 0.0001) / (highNorm + 0.0001)
-  var rawRatio = (lowRaw + bodyRaw + 0.0001) / (highRaw + 0.0001)
-  var highDominant = highNorm > (lowNorm + 0.22)
-  var rawBassSupport = (lowRaw + 0.6 * bodyRaw) > (highRaw * 0.9)
-  var lowQualified = (
-    (lowNorm > lowQualifiedThreshold) ||
-    ((lowNorm + bodyNorm) > lowBodyQualifiedThreshold)
+  dbgRatio = (dbgLowNorm + dbgBodyNorm + 0.0001) / (dbgHighNorm + 0.0001)
+  dbgRawRatio = (dbgLowRaw + dbgBodyRaw + 0.0001) / (dbgHighRaw + 0.0001)
+  dbgHighDominant = dbgHighNorm > (dbgLowNorm + 0.22)
+  dbgRawBassSupport = (dbgLowRaw + 0.6 * dbgBodyRaw) > (dbgHighRaw * 0.9)
+  dbgLowQualified = (
+    (dbgLowNorm > lowQualifiedThreshold) ||
+    ((dbgLowNorm + dbgBodyNorm) > lowBodyQualifiedThreshold)
   )
 
-  var candidate = (
-    signalActive &&
-    (lowNorm > onsetLowThreshold) &&
-    (lowRise > onsetThreshold) &&
-    (ratio > ratioThreshold) &&
-    (rawRatio > 0.95) &&
-    rawBassSupport &&
-    lowQualified &&
-    !highDominant
+  dbgCandidate = (
+    dbgSignalActive &&
+    (dbgLowNorm > onsetLowThreshold) &&
+    (dbgLowRise > onsetThreshold) &&
+    (dbgRatio > ratioThreshold) &&
+    (dbgRawRatio > 0.95) &&
+    dbgRawBassSupport &&
+    dbgLowQualified &&
+    !dbgHighDominant
   )
 
-  if (!signalActive) {
+  if (!dbgSignalActive) {
     pendingActive = 0
     pendingAgeMs = 0
     pendingBestScore = 0
@@ -131,13 +153,11 @@ export function beforeRender(delta) {
     prevLowNorm *= 0.5
   }
 
-  if (candidate) {
-    var ratioClamped = ratio
+  if (dbgCandidate) {
+    var ratioClamped = dbgRatio
     if (ratioClamped > 4) ratioClamped = 4
-
-    // Favor events with strong onset, strong low/body energy, and real bass dominance.
-    var score = lowRise * (lowNorm + 0.5 * bodyNorm) * ratioClamped
-    var strength = clamp01(0.55 + 0.35 * lowNorm + 0.10 * bodyNorm)
+    var score = dbgLowRise * (dbgLowNorm + 0.5 * dbgBodyNorm) * ratioClamped
+    var strength = clamp01(0.55 + 0.35 * dbgLowNorm + 0.10 * dbgBodyNorm)
 
     if (!pendingActive) {
       pendingActive = 1
@@ -150,6 +170,8 @@ export function beforeRender(delta) {
     }
   }
 
+  dbgPendingScore = pendingBestScore
+
   if (pendingActive) {
     pendingAgeMs += delta
     if (pendingAgeMs >= peakPickWindowMs) {
@@ -157,6 +179,7 @@ export function beforeRender(delta) {
         pulseAgeMs = 0
         flashStrength = pendingBestStrength
         refractoryLeftMs = refractoryMs
+        dbgAccepted = 1
       }
       pendingActive = 0
       pendingAgeMs = 0
@@ -165,11 +188,11 @@ export function beforeRender(delta) {
     }
   }
 
-  if (pulseAgeMs <= holdMs) pulse = flashStrength
-  else if (pulseAgeMs <= holdMs + fallMs) {
-    var t = (pulseAgeMs - holdMs) / fallMs
-    pulse = flashStrength * (1 - t * t)
-  } else pulse = 0
+  dbgFlashStrength = flashStrength
+
+  // Short bright pulse only so accepted triggers are visible while logging.
+  if (pulseAgeMs <= 90) pulse = flashStrength
+  else pulse = 0
 }
 
 export function render(index) {
@@ -182,13 +205,4 @@ export function render2D(index, x, y) {
 
 export function render3D(index, x, y, z) {
   render(index)
-}
-
-export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
-export function sliderHold(v) { holdMs = 20 + v * 380 }
-export function sliderDrop(v) { fallMs = 60 + v * 540 }
-
-export function hsvPickerColor(h, s, v) {
-  colorHue = h
-  colorSat = s
 }
