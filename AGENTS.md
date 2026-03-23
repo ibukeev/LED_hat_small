@@ -22,6 +22,7 @@ Project-specific memory and conventions for `LED_hat_small`.
   - `general/`
 - Current files:
   - `firmware/patterns/techno/tunnel-scanner.pe`
+  - `firmware/patterns/techno/main-beat-flash.pe`
   - `firmware/patterns/general/aurora.pe`
   - `firmware/patterns/general/waves.pe`
   - `firmware/patterns/general/ukrainian-flag.pe`
@@ -61,6 +62,18 @@ Project-specific memory and conventions for `LED_hat_small`.
 - Avoid one slider driving both gain and trigger threshold when that makes UI behavior feel inverted.
 - For high-gain live use, prefer soft compression/shaping over hard clipping in detector paths so kick onsets remain visible.
 - `firmware/patterns/techno/blackout-lightning.pe` follows this split-control approach.
+
+## Kick Detector Baseline
+- The frozen offline Python reference detector is:
+  - `onset_plus_ratio_peak_picked_low_qualified`
+- Porting intent for Pixelblaze:
+  - derive low/body/high energy from `frequencyData`
+  - compute low-band onset from normalized low energy rise
+  - require bass dominance plus low/body qualification
+  - perform short local peak picking before accepting a trigger
+  - validate with a minimal whole-hat flash pattern before adding more visual complexity
+- Initial live port target:
+  - `firmware/patterns/techno/main-beat-flash.pe`
 
 ## Documentation Update Rule
 - If pattern folder layout, sensor variable usage, or control philosophy changes, update:

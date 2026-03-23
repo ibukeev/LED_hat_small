@@ -1,0 +1,166 @@
+// Pattern: Main Beat Flash
+// Description: Clean whole-hat flash driven by the frozen Python kick detector port baseline.
+// Version: 0.1
+
+var level = 0.9
+var holdMs = 115
+var fallMs = 492
+var colorHue = 0.62
+var colorSat = 0.95
+
+var pulse = 0
+var pulseAgeMs = 99999
+var flashStrength = 1
+
+var lowPeak = 0.0001
+var bodyPeak = 0.0001
+var highPeak = 0.0001
+var prevLowNorm = 0
+
+var pendingActive = 0
+var pendingAgeMs = 0
+var pendingBestScore = 0
+var pendingBestStrength = 1
+
+var refractoryLeftMs = 0
+
+var onsetLowThreshold = 0.10
+var onsetThreshold = 0.035
+var ratioThreshold = 2.2
+var lowQualifiedThreshold = 0.16
+var lowBodyQualifiedThreshold = 0.26
+var peakPickWindowMs = 200
+var refractoryMs = 180
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+export function beforeRender(delta) {
+  pulseAgeMs += delta
+
+  if (refractoryLeftMs > 0) {
+    refractoryLeftMs -= delta
+    if (refractoryLeftMs < 0) refractoryLeftMs = 0
+  }
+
+  var lowRaw = 0
+  var bodyRaw = 0
+  var highRaw = 0
+
+  if (energyAverage >= 0) {
+    lowRaw = (
+      frequencyData[0] + frequencyData[1] + frequencyData[2] +
+      frequencyData[3] + frequencyData[4]
+    ) / 5
+
+    bodyRaw = (
+      frequencyData[5] + frequencyData[6] + frequencyData[7] +
+      frequencyData[8] + frequencyData[9]
+    ) / 5
+
+    highRaw = (
+      frequencyData[14] + frequencyData[15] + frequencyData[16] + frequencyData[17] +
+      frequencyData[18] + frequencyData[19] + frequencyData[20] + frequencyData[21] +
+      frequencyData[22] + frequencyData[23]
+    ) / 10
+  }
+
+  // Use slowly decaying peaks to approximate the Python-side per-band normalization.
+  var peakDecay = pow(0.55, delta / 1000)
+
+  lowPeak *= peakDecay
+  bodyPeak *= peakDecay
+  highPeak *= peakDecay
+
+  if (lowRaw > lowPeak) lowPeak = lowRaw
+  if (bodyRaw > bodyPeak) bodyPeak = bodyRaw
+  if (highRaw > highPeak) highPeak = highRaw
+
+  if (lowPeak < 0.0001) lowPeak = 0.0001
+  if (bodyPeak < 0.0001) bodyPeak = 0.0001
+  if (highPeak < 0.0001) highPeak = 0.0001
+
+  var lowNorm = clamp01(lowRaw / lowPeak)
+  var bodyNorm = clamp01(bodyRaw / bodyPeak)
+  var highNorm = clamp01(highRaw / highPeak)
+  var lowRise = lowNorm - prevLowNorm
+  if (lowRise < 0) lowRise = 0
+  prevLowNorm = lowNorm
+
+  var ratio = (lowNorm + bodyNorm + 0.0001) / (highNorm + 0.0001)
+  var lowQualified = (
+    (lowNorm > lowQualifiedThreshold) ||
+    ((lowNorm + bodyNorm) > lowBodyQualifiedThreshold)
+  )
+
+  var candidate = (
+    (lowNorm > onsetLowThreshold) &&
+    (lowRise > onsetThreshold) &&
+    (ratio > ratioThreshold) &&
+    lowQualified
+  )
+
+  if (candidate) {
+    var ratioClamped = ratio
+    if (ratioClamped > 4) ratioClamped = 4
+
+    // Favor events with strong onset, strong low/body energy, and real bass dominance.
+    var score = lowRise * (lowNorm + 0.5 * bodyNorm) * ratioClamped
+    var strength = clamp01(0.55 + 0.30 * lowNorm + 0.15 * bodyNorm)
+
+    if (!pendingActive) {
+      pendingActive = 1
+      pendingAgeMs = 0
+      pendingBestScore = score
+      pendingBestStrength = strength
+    } else if (score > pendingBestScore) {
+      pendingBestScore = score
+      pendingBestStrength = strength
+    }
+  }
+
+  if (pendingActive) {
+    pendingAgeMs += delta
+    if (pendingAgeMs >= peakPickWindowMs) {
+      if (refractoryLeftMs <= 0) {
+        pulseAgeMs = 0
+        flashStrength = pendingBestStrength
+        refractoryLeftMs = refractoryMs
+      }
+      pendingActive = 0
+      pendingAgeMs = 0
+      pendingBestScore = 0
+      pendingBestStrength = 1
+    }
+  }
+
+  if (pulseAgeMs <= holdMs) pulse = flashStrength
+  else if (pulseAgeMs <= holdMs + fallMs) {
+    var t = (pulseAgeMs - holdMs) / fallMs
+    pulse = flashStrength * (1 - t * t)
+  } else pulse = 0
+}
+
+export function render(index) {
+  hsv(colorHue, colorSat, pulse * level)
+}
+
+export function render2D(index, x, y) {
+  render(index)
+}
+
+export function render3D(index, x, y, z) {
+  render(index)
+}
+
+export function sliderOutputLevel(v) { level = 0.1 + v * 0.9 }
+export function sliderHold(v) { holdMs = 20 + v * 380 }
+export function sliderDrop(v) { fallMs = 60 + v * 540 }
+
+export function hsvPickerColor(h, s, v) {
+  colorHue = h
+  colorSat = s
+}
