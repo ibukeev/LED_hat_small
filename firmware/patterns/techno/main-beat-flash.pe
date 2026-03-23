@@ -8,6 +8,10 @@ var fallMs = 492
 var colorHue = 0.62
 var colorSat = 0.95
 
+// Values populated by Pixelblaze Sensor Expansion Board when connected.
+export var frequencyData = array(32)
+export var energyAverage = -1
+
 var pulse = 0
 var pulseAgeMs = 99999
 var flashStrength = 1
