@@ -100,6 +100,16 @@ Once one detector clearly performs best:
 - plots / trigger outputs for a small test corpus
 - final documented detector logic to port into Pixelblaze
 
+## Current Status
+
+- Python detector exploration is complete enough to freeze a reference detector for Pixelblaze porting
+- current frozen Python reference:
+  - `onset_plus_ratio_peak_picked_low_qualified`
+- next phase:
+  - simplify this reference detector into a Pixelblaze-portable form
+  - implement it in one audio-reactive Pixelblaze pattern
+  - validate live behavior on the hat
+
 ## Evaluation Notes
 
 ### Howling - 00m15s to 00m45s
@@ -351,6 +361,176 @@ Current takeaway:
 - it preserves the useful behavior of peak picking in dense sections
 - it improves the isolated-transient failure case seen in the Monolink transition window
 - this should be treated as the current leading candidate for the next round of evaluation
+
+## Additional Track Notes
+
+### Becoming Insane - 05m15s to 05m45s
+
+- about `0s` to `6s` in the excerpt:
+  - main bassy kick is present
+- after about `6s`:
+  - the main bass kick stops
+  - a faster, less-bassy psy-style kick remains
+  - this later activity should not be considered the target trigger behavior for this project
+
+Current takeaway from this test:
+
+- sparse detector behavior after `6s` is desirable in this excerpt
+- suppression of the later faster, less-bassy activity should be treated as a success rather than a miss
+- `onset_plus_ratio_peak_picked_low_qualified` performs well on this requirement
+
+### Becoming Insane - 03m45s to 04m15s
+
+- about `0s` to `16s` in the excerpt:
+  - mostly noisy or textured material without a stable bass-kick train
+  - only occasional isolated stronger events appear
+- about `16.5s` to `28s`:
+  - a clear regular main bass beat arrives
+  - low-band kick columns become strong and periodic
+
+Current takeaway from this test:
+
+- low detector activity before the regular bass beat arrives is desirable
+- triggering should primarily start once the later regular main beat section begins
+- `onset_plus_ratio_peak_picked_low_qualified` matches this behavior well
+
+### Becoming Insane - 05m55s to 06m25s
+
+- about `0s` to `5.5s` in the excerpt:
+  - dense upper and mid-frequency texture is present
+  - the clean main bass-kick train is not yet fully established
+- after about `6s`:
+  - a strong regular main bass beat appears and continues
+  - low-band kick columns become clearly periodic
+
+Current takeaway from this test:
+
+- peak picking provides the main improvement here by cutting raw onset-based clutter substantially
+- stronger low qualification does not materially change this window, which is acceptable because the later beat is already strongly bass-supported
+- `onset_plus_ratio_peak_picked_low_qualified` behaves well in the established main-beat section
+
+### Pria - 04m00s to 04m30s
+
+- about `10s` to `17s` in the excerpt:
+  - beat is present, but the section is lighter and less cleanly bass-dominant
+  - there is substantial mid and high-frequency clutter between beat pulses
+- after about `17s`:
+  - the main bass beat becomes stronger and more clearly established
+
+Current takeaway from this test:
+
+- raw detectors are too chatty in the presence of between-beat clutter
+- peak picking provides the main improvement by bringing trigger spacing much closer to the dominant beat
+- stronger low qualification does not materially change this window, but it does not hurt the result
+
+### Pria - 00m25s to 00m55s
+
+- this is a stable beat-driven section with a strong repeating low-band pulse throughout
+- substantial rhythmic clutter remains present between the main beat pulses
+
+Current takeaway from this test:
+
+- raw detectors are far too dense for a main-beat-only goal
+- peak picking provides the key improvement by reducing trigger density toward the dominant pulse train
+- stronger low qualification is neutral here, which is acceptable
+
+### Moderat - Bad Kingdom - 00m30s to 01m00s
+
+- this excerpt contains a repeating low-end pulse, but the target beat is weaker and flatter than the heavier techno and psy examples
+- the mix contains substantial mid and high-frequency structure around the beat
+
+Current takeaway from this test:
+
+- this is a useful weak/flatter-beat case
+- simple low-band and ratio-based detectors are too dense
+- the peak-picked onset family still produces a plausible sparse pulse train
+- stronger low qualification is neutral in this excerpt, which is acceptable
+
+### The Chemical Brothers - Galvanize - 02m15s to 02m45s
+
+- about `0s` to `15s` in the excerpt:
+  - broken, sparse, or irregular rhythmic structure
+  - only occasional isolated low events are present
+- after about `15s`:
+  - a more regular low-end pulse emerges
+  - substantial upper and mid-frequency rhythmic content is still present
+
+Current takeaway from this test:
+
+- this is a useful off-grid / irregular-structure case
+- the leading detector stays relatively restrained in the early broken section
+- it becomes more active once a stronger recurring beat-like structure appears
+- this is acceptable behavior for the project goal
+
+### Moderat - A New Error - 02m45s to 03m15s
+
+- about `0s` to `8s` in the excerpt:
+  - dense beat-driven material with a repeating low-end pulse and substantial surrounding structure
+- about `8s` to `12.5s`:
+  - clear breakdown / low-activity gap
+  - low-band activity drops out strongly
+- after about `12.5s`:
+  - beat returns and stays strong
+  - upper and mid-frequency clutter remains present around the beat
+
+Current takeaway from this test:
+
+- this is a strong breakdown and beat-reentry case
+- raw detectors are too dense in the active sections
+- the leading detector stays mostly quiet during the breakdown and re-acquires cleanly after the beat returns
+- this is another positive result for `onset_plus_ratio_peak_picked_low_qualified`
+
+### Astrix - Deep Jungle Walk - 02m00s to 02m30s
+
+- about `0s` to `7s` in the excerpt:
+  - transitional or sparse opening with noisy upper-frequency content and isolated events
+  - no stable target bass-kick train is established yet
+- after about `7s`:
+  - a strong, fast, regular bass-driven pulse appears
+  - low-band activity becomes clearly periodic
+
+Current takeaway from this test:
+
+- this is a useful fast-psy coverage case
+- raw detectors over-trigger heavily once the rolling section starts
+- peak picking provides the critical improvement by reducing the raw onset clutter to a cleaner regular pulse train
+- stronger low qualification is neutral here, which is acceptable
+
+### Astrix - Deep Jungle Walk - 07m00s to 07m30s
+
+- about `0s` to `6.5s` in the excerpt:
+  - noisy intro with strong upper-frequency content
+  - no stable low-band target pulse yet
+- about `6.5s` to `18.5s`:
+  - strong fast rolling bass-driven pulse is clearly established
+- about `18.5s` to `20s`:
+  - short break where the low-band pulse drops out
+- after about `20s`:
+  - the rolling pulse returns strongly
+
+Current takeaway from this test:
+
+- this is a valuable combined fast-psy, break, and beat-reentry case
+- the leading detector stays relatively restrained in the intro
+- it tracks the established rolling pulse well
+- it goes quiet through the short break and re-acquires cleanly when the beat returns
+
+## Test Matrix
+
+The matrix below tracks what detector behaviors are already covered by the current curated excerpt set and where more examples would still be useful.
+
+| Test Goal | What Good Behavior Looks Like | Current Coverage | Current Example(s) | Notes / Gaps |
+| --- | --- | --- | --- | --- |
+| Clean main kick baseline | Fires reliably on obvious bassy kick | Strong | `Kick Drum _ BPM 100 - 30s`, `Monolink 00m00s-00m30s`, `Monolink 01m00s-01m30s` | Baseline is well covered |
+| Beat entry after softer opening | Stays mostly quiet, then locks onto beat when it arrives | Strong | `Monolink 01m00s-01m30s`, `Becoming Insane 03m45s-04m15s` | Covered |
+| Dense beat plus between-beat clutter | Favors dominant beat and suppresses intermediate rhythmic events | Strong | `Howling 00m15s-00m45s`, `Howling 02m30s-03m00s`, `Pria 04m00s-04m30s`, `Pria 00m25s-00m55s` | One of the best-covered categories |
+| Main beat disappears but lighter rhythmic content continues | Stops triggering once the target bassy beat is gone | Strong | `Monolink 02m00s-02m30s`, `Becoming Insane 05m15s-05m45s` | Covered and very important for project goal |
+| Long riser / build with no true kick train | Stays quiet through build, resumes on beat return | Strong | `Monolink 04m35s-05m05s`, `Howling 04m00s-04m30s` | Covered |
+| Isolated transient bursts that are not the main beat | Rejects isolated non-beat transient events | Medium | `Monolink 04m35s-05m05s`, `Becoming Insane 03m45s-04m15s` | Covered enough to expose one key false-trigger case, but more examples would help |
+| Strong regular beat in dense psy / fast material | Keeps main pulse without exploding into over-triggering | Medium | `Becoming Insane 05m55s-06m25s`, `Pria 00m25s-00m55s` | More fast psy / hi-tech examples would still help |
+| Weak or flatter kick with less bass emphasis | Still catches valid target beat if it is meant to count | Weak | Partial coverage only from some `Howling` and `Pria` sections | Needs more deliberate examples |
+| Off-grid percussion / non-4-on-the-floor rhythmic material | Avoids following non-target rhythmic structure | Weak | No strong dedicated example yet | Good gap to fill |
+| Sparse cinematic or industrial hits | Avoids triggering on isolated booms / impacts that are not beat-driving kicks | Weak | Only partially covered by transition windows | Good gap to fill |
 
 ## Implementation Plan
 
