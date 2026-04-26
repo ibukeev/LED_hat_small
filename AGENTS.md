@@ -96,6 +96,12 @@ Project-specific memory and conventions for `LED_hat_small`.
 - Current workflow rule:
   - detector ideas should be tested in replay against captured Pixelblaze exports first
   - only detector changes that clearly improve replay/logged behavior should be promoted back into Pixelblaze patterns
+- Current instrumentation note:
+  - Pixelblaze debug exports now include:
+    - `dbgTickId`
+    - `dbgDetectorTimeS`
+  - websocket/exported-vars capture is useful for coarse detector calibration, but it drops a noticeable fraction of detector ticks
+  - treat replay from captured exports as approximate, not exact per-tick ground truth
 - Recently tried and reverted:
   - `supportRawRatio` short-term growth gate
   - it reduced some false triggers but hurt post-drop recall too much
@@ -109,6 +115,9 @@ Project-specific memory and conventions for `LED_hat_small`.
 - Important current guardrail:
   - the current live/debug detector fully misses `Kick Drum BPM 100 - 30s`
   - future replay-side detector experiments must recover this easy baseline before being promoted back to Pixelblaze
+- Current export-path conclusion:
+  - no clearly better documented transport than exported vars over the Pixelblaze websocket/UI path has been found
+  - Firestorm appears to wrap the same underlying websocket API rather than providing a distinct high-fidelity logging channel
 
 ## Documentation Update Rule
 - If pattern folder layout, sensor variable usage, or control philosophy changes, update:

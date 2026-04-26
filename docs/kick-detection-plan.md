@@ -260,6 +260,34 @@ Current important observation:
 - this means the current Pixelblaze gate is too strict for the easy baseline
 - this sample should be treated as a mandatory regression guard for future replay-side detector experiments
 
+### Instrumentation Findings
+
+- exported-var capture over the Pixelblaze websocket path is useful for coarse debugging, but it is not a lossless detector trace
+- using `dbgTickId` on kick-drum captures shows that the logger is missing a substantial fraction of detector ticks
+  - practical takeaway:
+    - replay based on captured rows is directionally useful
+    - replay is not trustworthy at single-tick precision
+- to improve observability, the debug pattern now exports:
+  - `dbgTickId`
+  - `dbgDetectorTimeS`
+- current workflow consequence:
+  - use replay to understand broad detector behavior, false-trigger regions, and timing trends
+  - do not over-interpret single missed or shifted events from websocket snapshots as exact on-device truth
+
+### Data Export Options
+
+- the documented / forum-supported way to get live pattern data out of Pixelblaze is via exported variables over the websocket API
+- Firestorm provides a simpler REST/JSON surface, but forum guidance describes it as a wrapper around the same Pixelblaze websocket API rather than a distinct higher-fidelity transport
+- no clearly documented alternative path was found for high-rate detector logging directly from a running pattern
+  - no separate trace/log stream
+  - no documented file/log export facility for pattern-generated data
+
+Practical conclusion:
+
+- websocket/exported-vars remains the usable path for calibration
+- the bottleneck is capture fidelity, not lack of access to pattern state
+- future detector work should treat websocket captures as sampled observations of the on-device detector, not exact ground-truth traces
+
 Current evaluation rule for replay-side detector variants:
 
 - improve the hard Monolink false-trigger case

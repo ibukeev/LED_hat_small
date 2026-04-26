@@ -55,6 +55,8 @@ export var dbgRefractoryLeftMs = 0
 export var dbgPulseAgeMs = 0
 export var dbgPulse = 0
 export var dbgDetectorTickMs = 0
+export var dbgTickId = 0
+export var dbgDetectorTimeS = 0
 
 export var dbgOnsetThreshold = 0
 export var dbgPeakPickWindowMs = 0
@@ -77,6 +79,8 @@ var pulseAgeMs = 99999
 var flashStrength = 1
 var detectorAccumMs = 0
 var acceptedLatchMs = 0
+var detectorTickId = 0
+var detectorTimeS = 0
 
 var subPeak = 0.0001
 var corePeak = 0.0001
@@ -119,6 +123,11 @@ function clamp01(v) {
 }
 
 function detectorStep(delta) {
+  detectorTickId += 1
+  detectorTimeS += delta / 1000
+  dbgTickId = detectorTickId
+  dbgDetectorTimeS = detectorTimeS
+
   dbgOnsetThreshold = onsetThreshold
   dbgPeakPickWindowMs = peakPickWindowMs
   dbgRefractoryMs = refractoryMs

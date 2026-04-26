@@ -63,6 +63,13 @@ def load_rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def row_time_s(row: dict[str, str]) -> float:
+    dbg_detector_time = row.get("dbgDetectorTimeS")
+    if dbg_detector_time not in (None, ""):
+        return float(dbg_detector_time)
+    return float(row["ts_rel"])
+
+
 def detect_active_window(
     rows: list[dict[str, str]],
     sum_threshold_frac: float,
@@ -70,7 +77,7 @@ def detect_active_window(
 ) -> tuple[float, float] | None:
     vals: list[tuple[float, float, float]] = []
     for row in rows:
-        ts_rel = float(row["ts_rel"])
+        ts_rel = row_time_s(row)
         energy = float(row.get("energyAverage", 0) or 0)
         band_sum = 0.0
         for i in range(32):
@@ -127,15 +134,18 @@ def main() -> int:
 
     onsetLowThreshold = float(rows[0].get("dbgOnsetLowThreshold", 0.10))
     onsetThreshold = float(rows[0].get("dbgOnsetThreshold", 0.035))
-    peakPickWindowMs = float(rows[0].get("dbgPeakPickWindowMs", 240))
+    # Replay-side experimental window: shorter than the live pattern so
+    # narrow kick pulses can survive the pending stage.
+    peakPickWindowMs = min(float(rows[0].get("dbgPeakPickWindowMs", 240)), 135.0)
     refractoryMs = float(rows[0].get("dbgRefractoryMs", 180))
     energyFloor = float(rows[0].get("dbgEnergyFloor", 0.0012))
     lowRawFloor = float(rows[0].get("dbgLowRawFloor", 0.0005))
     lowBodyRawFloor = float(rows[0].get("dbgLowBodyRawFloor", 0.0010))
 
     # Pixelblaze-calibrated grouping based on captured Monolink analysis.
-    coreRawFloor = max(lowRawFloor, 0.060)
-    supportRawFloor = max(lowBodyRawFloor, 0.160)
+    coreRawFloor = max(lowRawFloor, 0.030)
+    subCoreRawFloor = 0.075
+    supportRawFloor = max(lowBodyRawFloor, 0.090)
     ratioThreshold = 3.0
     rawRatioThreshold = 14.0
     contaminationNormMax = 0.68
@@ -146,6 +156,9 @@ def main() -> int:
     corePeak = 0.0001
     bodyPeak = 0.0001
     contaminationPeak = 0.0001
+    subAvg = 0.0001
+    coreAvg = 0.0001
+    supportAvg = 0.0001
     prevCoreNorm = 0.0
     pendingActive = 0
     pendingAgeMs = 0.0
@@ -157,7 +170,7 @@ def main() -> int:
 
     prev_ts = None
     for row in rows:
-        ts_rel_raw = float(row["ts_rel"])
+        ts_rel_raw = row_time_s(row)
         if ts_rel_raw < active_start:
             continue
         if active_end is not None and ts_rel_raw > active_end:
@@ -174,14 +187,17 @@ def main() -> int:
                 refractoryLeftMs = 0
 
         bins = [float(row[f"frequencyData_{i:02d}"]) for i in range(32)]
+        subRaw = sum(bins[0:3]) / 3.0
         coreRaw = sum(bins[1:7]) / 6.0
         bodyRaw = sum(bins[7:12]) / 5.0
         contaminationRaw = sum(bins[21:26]) / 5.0
+        supportRaw = subRaw + coreRaw + 0.6 * bodyRaw
         energyAverage = float(row["energyAverage"])
 
+        subCoreRaw = subRaw + coreRaw
         signalActive = int(
             (energyAverage > energyFloor)
-            and ((coreRaw > coreRawFloor) or ((coreRaw + bodyRaw) > supportRawFloor))
+            and ((coreRaw > coreRawFloor) or (subCoreRaw > subCoreRawFloor) or (supportRaw > supportRawFloor))
         )
 
         peakDecay = pow(0.55, delta / 1000.0) if delta > 0 else 1.0
@@ -211,11 +227,22 @@ def main() -> int:
             lowRise = 0.0
         prevCoreNorm = lowNorm
 
+        subAvg = max(0.0001, 0.92 * subAvg + 0.08 * subRaw)
+        coreAvg = max(0.0001, 0.92 * coreAvg + 0.08 * coreRaw)
+        supportAvg = max(0.0001, 0.92 * supportAvg + 0.08 * supportRaw)
+
+        subOverAvg = subRaw / subAvg
+        coreOverAvg = coreRaw / coreAvg
+        supportOverAvg = supportRaw / supportAvg
+
         ratio = (lowNorm + bodyNorm + 0.0001) / (highNorm + 0.0001)
         rawRatio = (coreRaw + bodyRaw + 0.0001) / (contaminationRaw + 0.0001)
         highDominant = int(highNorm > contaminationNormMax)
         rawBassSupport = int((coreRaw + 0.85 * bodyRaw) > (contaminationRaw * rawRatioThreshold / 2.0))
-        lowQualified = int((coreRaw > coreRawFloor) and ((coreRaw + bodyRaw) > supportRawFloor))
+        lowQualified = int(
+            ((coreRaw > coreRawFloor) or (subCoreRaw > subCoreRawFloor))
+            and (supportRaw > supportRawFloor)
+        )
         contaminationWeighted = contaminationRaw / max(coreRaw + 0.6 * bodyRaw, 0.0001)
 
         candidate = int(
@@ -227,14 +254,13 @@ def main() -> int:
             and lowQualified
             and not highDominant
             and (contaminationWeighted < contaminationWeightedMax)
-            and ((lowRise > onsetThreshold) or (lowNorm > 0.82))
+            and (subOverAvg > 1.15)
+            and (coreOverAvg > 1.05)
+            and (supportOverAvg > 1.08)
+            and ((lowRise > onsetThreshold) or (supportOverAvg > 1.22) or (lowNorm > 0.82))
         )
 
         if not signalActive:
-            pendingActive = 0
-            pendingAgeMs = 0.0
-            pendingBestScore = 0.0
-            pendingBestStrength = 1.0
             prevCoreNorm *= 0.5
 
         if candidate:
@@ -242,7 +268,8 @@ def main() -> int:
             if ratioClamped > 4:
                 ratioClamped = 4
             riseScore = lowRise if lowRise > onsetThreshold else onsetThreshold
-            score = riseScore * (lowNorm + 0.7 * bodyNorm) * ratioClamped
+            supportShape = max(subOverAvg, 1.0) * max(coreOverAvg, 1.0) * max(supportOverAvg, 1.0)
+            score = riseScore * (lowNorm + 0.7 * bodyNorm) * ratioClamped * supportShape
             strength = clamp01(0.50 + 0.35 * lowNorm + 0.15 * bodyNorm)
             if not pendingActive:
                 pendingActive = 1
@@ -276,10 +303,16 @@ def main() -> int:
                 "replay_lowRise": lowRise,
                 "replay_ratio": ratio,
                 "replay_rawRatio": rawRatio,
+                "replay_subRaw": subRaw,
+                "replay_subCoreRaw": subCoreRaw,
                 "replay_coreRaw": coreRaw,
                 "replay_bodyRaw": bodyRaw,
+                "replay_supportRaw": supportRaw,
                 "replay_contaminationRaw": contaminationRaw,
                 "replay_contaminationWeighted": contaminationWeighted,
+                "replay_subOverAvg": subOverAvg,
+                "replay_coreOverAvg": coreOverAvg,
+                "replay_supportOverAvg": supportOverAvg,
                 "replay_signalActive": signalActive,
                 "replay_highDominant": highDominant,
                 "replay_lowQualified": lowQualified,
