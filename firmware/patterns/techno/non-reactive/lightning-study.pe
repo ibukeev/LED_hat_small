@@ -1,0 +1,209 @@
+// Pattern: Lightning Study
+// Description: Fixed lightning family with constrained per-event variation repeating every 2 seconds.
+// Version: 0.6
+
+var strikeIntervalMs = 2000
+var colorHue = 0.11
+var colorSat = 0.12
+var colorValue = 1.00
+var violentOpening = true
+var denseMiddle = true
+var cleanEnding = true
+var spatialSpread = 0.55
+var seriesLength = 0.75
+var authoredStrikeSlots = 9
+var minStrikeCount = 7
+
+var timerMs = 0
+var seriesAgeMs = 99999
+var seriesDurationMs = 900
+var strikeHoldMs = 22
+var strikeTailMs = 180
+var cycleId = 0
+var strikeCount = 0
+var strikeTimes = array(9)
+var strikeGains = array(9)
+var strikeCenters = array(9)
+var strikeWidths = array(9)
+
+function clamp01(v) {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
+}
+
+function hash1(x) {
+  return frac(sin(x * 127.1 + 311.7) * 43758.5453)
+}
+
+function initSeriesArrays() {
+  for (var i = 0; i < authoredStrikeSlots; i++) {
+    strikeTimes[i] = 0
+    strikeGains[i] = 0
+    strikeCenters[i] = 0.5
+    strikeWidths[i] = 0.4
+  }
+}
+
+function sampleStrikeOne(ageMs, gain) {
+  if (ageMs < 0) return 0
+  if (ageMs <= strikeHoldMs) return gain
+  if (ageMs <= strikeHoldMs + strikeTailMs) {
+    var t = (ageMs - strikeHoldMs) / strikeTailMs
+    return gain * (1 - pow(t, 0.45))
+  }
+  return 0
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t
+}
+
+function scheduleSeries(seed) {
+  seriesLength = clamp01(seriesLength)
+
+  // Locked characteristics the user consistently prefers.
+  violentOpening = true
+  denseMiddle = true
+
+  // Randomize only the dimensions that looked good across their range.
+  cleanEnding = hash1(seed + 0.13) < 0.5
+  spatialSpread = 0.08 + 0.84 * hash1(seed + 0.41)
+  // Randomize only in the approved middle-to-max region.
+  seriesLength = 0.5 + 0.5 * hash1(seed + 0.67)
+
+  // One fixed "approved" lightning series.
+  // Keep the runtime strike count inside the authored template.
+  strikeCount = minStrikeCount + floor(seriesLength * (authoredStrikeSlots - minStrikeCount + 0.999))
+  if (strikeCount > authoredStrikeSlots) strikeCount = authoredStrikeSlots
+  strikeHoldMs = violentOpening ? 18 : 22
+  strikeTailMs = cleanEnding ? 46 : 62
+  seriesDurationMs = (cleanEnding ? 620 : 720) + seriesLength * 280
+
+  strikeTimes[0] = 0
+  strikeTimes[1] = violentOpening ? 38 : 58
+  strikeTimes[2] = violentOpening ? 80 : 116
+  strikeTimes[3] = denseMiddle ? 124 : 156
+  strikeTimes[4] = (denseMiddle ? 180 : 238) + seriesLength * 18
+  strikeTimes[5] = (denseMiddle ? 246 : 336) + seriesLength * 40
+  strikeTimes[6] = (denseMiddle ? 318 : 436) + seriesLength * 68
+  strikeTimes[7] = (cleanEnding ? 396 : 558) + seriesLength * 96
+  strikeTimes[8] = (cleanEnding ? 486 : 694) + seriesLength * 132
+
+  strikeGains[0] = violentOpening ? 1.00 : 0.90
+  strikeGains[1] = violentOpening ? 0.97 : 0.84
+  strikeGains[2] = violentOpening ? 0.93 : 0.80
+  strikeGains[3] = denseMiddle ? 0.88 : 0.74
+  strikeGains[4] = denseMiddle ? 0.84 : 0.68
+  strikeGains[5] = denseMiddle ? 0.90 : 0.72
+  strikeGains[6] = denseMiddle ? 0.82 : 0.66
+  strikeGains[7] = cleanEnding ? 0.76 : 0.70
+  strikeGains[8] = cleanEnding ? 0.70 : 0.64
+
+  strikeCenters[0] = lerp(0.50, 0.44, spatialSpread)
+  strikeCenters[1] = lerp(0.50, 0.52, spatialSpread)
+  strikeCenters[2] = lerp(0.50, 0.36, spatialSpread)
+  strikeCenters[3] = lerp(0.50, 0.58, spatialSpread)
+  strikeCenters[4] = lerp(0.50, 0.48, spatialSpread)
+  strikeCenters[5] = lerp(0.50, 0.30, spatialSpread)
+  strikeCenters[6] = lerp(0.50, 0.62, spatialSpread)
+  strikeCenters[7] = lerp(0.50, 0.40, spatialSpread)
+  strikeCenters[8] = lerp(0.50, 0.54, spatialSpread)
+
+  strikeWidths[0] = lerp(0.28, 0.18, spatialSpread)
+  strikeWidths[1] = lerp(0.27, 0.16, spatialSpread)
+  strikeWidths[2] = lerp(0.30, 0.20, spatialSpread)
+  strikeWidths[3] = lerp(0.27, 0.17, spatialSpread)
+  strikeWidths[4] = lerp(0.31, 0.22, spatialSpread)
+  strikeWidths[5] = lerp(0.29, 0.19, spatialSpread)
+  strikeWidths[6] = lerp(0.30, 0.21, spatialSpread)
+  strikeWidths[7] = lerp(0.28, 0.18, spatialSpread)
+  strikeWidths[8] = lerp(0.29, 0.20, spatialSpread)
+
+  // Fade out unused late-strike slots when the series is shorter.
+  for (var i = strikeCount; i < authoredStrikeSlots; i++) {
+    strikeGains[i] = 0
+  }
+}
+
+function sampleSeriesGlobal() {
+  var v = 0
+  for (var i = 0; i < strikeCount; i++) {
+    v = max(v, sampleStrikeOne(seriesAgeMs - strikeTimes[i], strikeGains[i]))
+  }
+
+  // Slow afterglow under the sharper strikes.
+  if (seriesAgeMs >= 0 && seriesAgeMs <= seriesDurationMs) {
+    var t = seriesAgeMs / seriesDurationMs
+    var cutoff = 1 - pow(t, 7.0)
+    var rumble = cutoff * 0.012
+    v = max(v, rumble)
+  }
+
+  return clamp01(v)
+}
+
+function sampleSeriesAtX(x) {
+  var v = 0
+  for (var i = 0; i < strikeCount; i++) {
+    var strike = sampleStrikeOne(seriesAgeMs - strikeTimes[i], strikeGains[i])
+    if (strike <= 0) continue
+
+    var dist = abs(x - strikeCenters[i])
+    var profile = 0.72 + 0.28 * exp(-pow(dist / strikeWidths[i], 2))
+    v = max(v, strike * profile)
+  }
+
+  // Broad backlight glow so the whole hat participates during a lightning event.
+  if (seriesAgeMs >= 0 && seriesAgeMs <= seriesDurationMs) {
+    var t = seriesAgeMs / seriesDurationMs
+    var cutoff = 1 - pow(t, 7.5)
+    var cloudTexture = 0.82 + 0.18 * (sin(x * 1.7 * PI * 2) * 0.5 + 0.5)
+    var cloud = cutoff * 0.012 * cloudTexture
+    v = max(v, cloud)
+  }
+
+  return clamp01(v)
+}
+
+export function beforeRender(delta) {
+  timerMs += delta
+  seriesAgeMs += delta
+
+  while (timerMs >= strikeIntervalMs) {
+    timerMs -= strikeIntervalMs
+    seriesAgeMs = 0
+    cycleId += 1
+    scheduleSeries(cycleId)
+  }
+}
+
+export function render(index) {
+  var x = (index + 0.5) / pixelCount
+  var strike = sampleSeriesAtX(x)
+  var global = sampleSeriesGlobal()
+  var texture = 0.84 + 0.16 * (sin(x * 3.1 * PI * 2) * 0.5 + 0.5)
+  var v = clamp01(max(strike, global * 0.78) * texture * colorValue)
+  hsv(colorHue, colorSat, v)
+}
+
+export function render2D(index, x, y) {
+  render(index)
+}
+
+export function render3D(index, x, y, z) {
+  render(index)
+}
+
+export function inputNumberStrikeIntervalSec(v) {
+  strikeIntervalMs = max(1, v) * 1000
+}
+
+export function hsvPickerColor(h, s, v) {
+  colorHue = h
+  colorSat = s
+  colorValue = v
+}
+
+initSeriesArrays()
+scheduleSeries(cycleId)

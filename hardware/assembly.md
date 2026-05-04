@@ -35,7 +35,15 @@
 2. **Power Distribution**
    - Plan power routing to LED matrix
    - Ensure adequate wire gauge for current
-   - Add power switch if desired
+   - Add inline power switch on the positive battery lead
+   - Insulate each splice with heat shrink or equivalent
+
+3. **On/Off Button Installation**
+   - Use a latching 2-pin inline switch so the hat can be powered down without unplugging the battery
+   - Current installed switch: JIA Teng KAN-28 self-lock micro push button, 1.5A 250V, 18 x 12 mm
+   - Wire the switch in series with the positive power lead, not the ground lead
+   - Mount or secure the switch so fabric movement does not pull directly on the solder joints
+   - See `hardware/schematics/on-off-button-installed.jpg` for the current installed example
 
 3. **Charging Circuit**
    - Install charging module
@@ -68,6 +76,5 @@
 ## Troubleshooting
 
 See `build/troubleshooting.md` for common issues and solutions.
-
 
 

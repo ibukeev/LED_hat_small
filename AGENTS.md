@@ -18,9 +18,12 @@ Project-specific memory and conventions for `LED_hat_small`.
 ## Pattern Organization
 - Use themed folders under `firmware/patterns/`:
   - `techno/`
+  - `techno/non-reactive/`
   - `burning-man/`
   - `general/`
 - Current files:
+  - `firmware/patterns/techno/non-reactive/club-lights-after-hours.pe`
+  - `firmware/patterns/techno/non-reactive/lightning-study.pe`
   - `firmware/patterns/techno/tunnel-scanner.pe`
   - `firmware/patterns/techno/main-beat-flash.pe`
   - `firmware/patterns/techno/main-beat-debug.pe`
@@ -48,6 +51,11 @@ Project-specific memory and conventions for `LED_hat_small`.
   - `x = (index + 0.5) / pixelCount`
 - Ukrainian flag requirement:
   - Center boundary should resolve to blue for recognizability on odd pixel counts.
+- Ukrainian flag current behavior:
+  - Keep the blue/yellow layout and RGB colors visually stable.
+  - Dynamic effects should be brightness-only unless explicitly changed.
+  - Current lightning effect uses randomized 5-10 minute strike cadence with no white or alternate-color overlays.
+  - Lightning events should fade into a 5-second dark period, strike at full-amplitude in the same colors, then restore to the static baseline.
 
 ## Tunnel Scanner Conventions
 - File: `firmware/patterns/techno/tunnel-scanner.pe`

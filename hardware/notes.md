@@ -16,6 +16,7 @@
 - **Battery Type**: [Selection rationale]
 - **Capacity**: [mAh] chosen for [runtime requirements]
 - **Charging**: [Method] selected for [reasons]
+- **Manual Power Control**: Inline latching pushbutton switch added on the positive supply lead so the hat can be turned off without disconnecting the battery
 
 ## Modifications and Improvements
 
@@ -26,6 +27,11 @@
 - **v1.1**: [Date] - [Changes made]
   - [Specific modifications]
   - [Reason for changes]
+
+- **v1.2**: 2026-05-02 - Inline on/off switch added
+  - Added a self-locking 2-pin pushbutton in series with the positive power lead
+  - Improves usability by allowing full power disconnect without unplugging the battery pack
+  - Installed reference photo: `hardware/schematics/on-off-button-installed.jpg`
 
 ### Known Issues
 - [Issue 1]: [Description and workaround]
@@ -60,6 +66,11 @@
 - **Data line**: [Gauge] - [Reason]
 - **Power line**: [Gauge] - [Reason]
 - **Length considerations**: [Notes]
+
+### Power Switching
+- **Switch placement**: Positive battery lead is interrupted by the inline latching pushbutton
+- **Installed switch**: JIA Teng KAN-28 self-lock micro push button switch, flat 2-pin, rated 1.5A 250V
+- **Documentation photo**: `hardware/schematics/on-off-button-installed.jpg`
 
 ## Mechanical Considerations
 
@@ -148,6 +159,5 @@ See `hardware/schematics/` directory for:
 - LED datasheets: [Links]
 - Battery safety guidelines: [Links]
 - Relevant standards: [List]
-
 
 

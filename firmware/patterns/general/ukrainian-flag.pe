@@ -1,46 +1,62 @@
-// Pattern: Ukrainian Flag (Reactive)
-// Description: Blue over yellow with optional blink/strobe and accelerometer reaction.
-// Version: 1.1
+// Pattern: Ukrainian Flag
+// Description: Blue-over-yellow flag with brightness-only lightning pulses.
+// Version: 2.4
 
-// Flag colors (#005BBB and #FFD500)
-export var blueR = 0.0
-export var blueG = 0.357
-export var blueB = 0.733
-export var yellowR = 1.0
-export var yellowG = 0.835
-export var yellowB = 0.0
+// Tuned for a vivid but not harsh wearable look.
+export var blueR = 0.00
+export var blueG = 0.36
+export var blueB = 0.78
+export var yellowR = 1.00
+export var yellowG = 0.84
+export var yellowB = 0.08
+export var brightness = 0.35
 
-// Flag layout
+// Keep the center boundary blue for recognizability on odd pixel counts.
 export var bandSplit = 0.5
-export var bandSoftness = 0.0
-export var tiltAmount = 0.25
 export var centerBlue = 1
 
-// Time controls
-export var speed = 1.0
-export var blinkHz = 0.0
-export var strobeStyle = 0   // 0=off, 1=smooth, 2=inLonger, 3=outLonger
-export var strobeHz = 8.0
-export var strobeDuty = 0.5
-export var strobeInPow = 2.0
-export var strobeOutPow = 2.0
+// Lightning changes brightness only; it never changes the flag colors.
+var lightningStrength = 1.00
+var minGapMs = 300000
+var maxGapMs = 600000
+var blackoutLeadMs = 5000
+var blackoutFadeMs = 420
+var restoreMs = 480
+var gapTimerMs = 0
+var nextGapMs = 6500
+var seriesAgeMs = 99999
+var seriesDurationMs = 900
+var strikeHoldMs = 18
+var strikeTailMs = 54
+var cycleId = 0
+var authoredStrikeSlots = 9
+var minStrikeCount = 7
+var strikeCount = 0
+var seriesLength = 0.75
+var cleanEnding = true
+var spatialSpread = 0.55
+var strikeTimes = array(9)
+var strikeGains = array(9)
+var strikeCenters = array(9)
+var strikeWidths = array(9)
 
-// Motion reaction
-export var motionBoost = 0.6
-export var motionScale = 2.0
+export function sliderBrightness(v) {
+  brightness = v
+}
 
-// Sensor Expansion Board values (Pixelblaze sets these when available)
-export var light = -1
-export var accelerometer
+export function sliderLightningStrength(v) {
+  lightningStrength = v
+}
 
-var PI2 = PI * 2
-var elapsed = 0
+export function inputNumberMinGapSec(v) {
+  minGapMs = max(1, v) * 1000
+  if (maxGapMs < minGapMs) maxGapMs = minGapMs
+}
 
-// Cached orientation/motion from beforeRender
-var nx = 0
-var ny = 0
-var nz = 1
-var motion = 0
+export function inputNumberMaxGapSec(v) {
+  maxGapMs = max(1, v) * 1000
+  if (minGapMs > maxGapMs) minGapMs = maxGapMs
+}
 
 function clamp01(v) {
   if (v < 0) return 0
@@ -48,123 +64,165 @@ function clamp01(v) {
   return v
 }
 
+function hash1(x) {
+  return frac(sin(x * 127.1 + 311.7) * 43758.5453)
+}
+
 function lerp(a, b, t) {
   return a + (b - a) * t
 }
 
-function smoothstep(edge0, edge1, x) {
-  var t = clamp01((x - edge0) / (edge1 - edge0))
-  return t * t * (3 - 2 * t)
+function sampleGapMs(seed) {
+  return minGapMs + (maxGapMs - minGapMs) * hash1(seed + 0.23)
 }
 
-function hasSensor() {
-  return light != -1
+function initLightningArrays() {
+  for (var i = 0; i < authoredStrikeSlots; i++) {
+    strikeTimes[i] = 0
+    strikeGains[i] = 0
+    strikeCenters[i] = 0.5
+    strikeWidths[i] = 0.4
+  }
 }
 
-function normalize3(x, y, z) {
-  var m = sqrt(x * x + y * y + z * z)
-  if (m <= 0) {
-    nx = 0
-    ny = 0
-    nz = 1
-    return
+function sampleStrike(ageMs, gain) {
+  if (ageMs < 0) return 0
+  if (ageMs <= strikeHoldMs) return gain
+  if (ageMs <= strikeHoldMs + strikeTailMs) {
+    var t = (ageMs - strikeHoldMs) / strikeTailMs
+    return gain * (1 - pow(t, 0.45))
   }
-  nx = x / m
-  ny = y / m
-  nz = z / m
+  return 0
 }
 
-function strobeEnvelope(phase, style) {
-  if (style == 1) return 0.5 - 0.5 * cos(phase * PI2)
+function scheduleLightningSeries(seed) {
+  cleanEnding = hash1(seed + 0.13) < 0.5
+  spatialSpread = 0.08 + 0.84 * hash1(seed + 0.41)
+  seriesLength = 0.5 + 0.5 * hash1(seed + 0.67)
 
-  var duty = strobeDuty
-  if (style == 2 && duty < 0.6) duty = 0.6
-  if (style == 3 && duty > 0.4) duty = 0.4
+  strikeCount = minStrikeCount + floor(seriesLength * (authoredStrikeSlots - minStrikeCount + 0.999))
+  if (strikeCount > authoredStrikeSlots) strikeCount = authoredStrikeSlots
 
-  if (phase < duty) return pow(phase / duty, strobeInPow)
-  return pow((1 - phase) / (1 - duty), strobeOutPow)
+  strikeHoldMs = 18
+  strikeTailMs = cleanEnding ? 46 : 62
+  seriesDurationMs = (cleanEnding ? 620 : 720) + seriesLength * 280
+
+  strikeTimes[0] = 0
+  strikeTimes[1] = 38
+  strikeTimes[2] = 80
+  strikeTimes[3] = 124
+  strikeTimes[4] = 180 + seriesLength * 18
+  strikeTimes[5] = 246 + seriesLength * 40
+  strikeTimes[6] = 318 + seriesLength * 68
+  strikeTimes[7] = (cleanEnding ? 396 : 558) + seriesLength * 96
+  strikeTimes[8] = (cleanEnding ? 486 : 694) + seriesLength * 132
+
+  strikeGains[0] = 1.00
+  strikeGains[1] = 0.97
+  strikeGains[2] = 0.93
+  strikeGains[3] = 0.88
+  strikeGains[4] = 0.84
+  strikeGains[5] = 0.90
+  strikeGains[6] = 0.82
+  strikeGains[7] = cleanEnding ? 0.76 : 0.70
+  strikeGains[8] = cleanEnding ? 0.70 : 0.64
+
+  strikeCenters[0] = lerp(0.50, 0.44, spatialSpread)
+  strikeCenters[1] = lerp(0.50, 0.52, spatialSpread)
+  strikeCenters[2] = lerp(0.50, 0.36, spatialSpread)
+  strikeCenters[3] = lerp(0.50, 0.58, spatialSpread)
+  strikeCenters[4] = lerp(0.50, 0.48, spatialSpread)
+  strikeCenters[5] = lerp(0.50, 0.30, spatialSpread)
+  strikeCenters[6] = lerp(0.50, 0.62, spatialSpread)
+  strikeCenters[7] = lerp(0.50, 0.40, spatialSpread)
+  strikeCenters[8] = lerp(0.50, 0.54, spatialSpread)
+
+  strikeWidths[0] = lerp(0.28, 0.18, spatialSpread)
+  strikeWidths[1] = lerp(0.27, 0.16, spatialSpread)
+  strikeWidths[2] = lerp(0.30, 0.20, spatialSpread)
+  strikeWidths[3] = lerp(0.27, 0.17, spatialSpread)
+  strikeWidths[4] = lerp(0.31, 0.22, spatialSpread)
+  strikeWidths[5] = lerp(0.29, 0.19, spatialSpread)
+  strikeWidths[6] = lerp(0.30, 0.21, spatialSpread)
+  strikeWidths[7] = lerp(0.28, 0.18, spatialSpread)
+  strikeWidths[8] = lerp(0.29, 0.20, spatialSpread)
+
+  for (var i = strikeCount; i < authoredStrikeSlots; i++) {
+    strikeGains[i] = 0
+  }
 }
 
-// Pixelblaze UI controls
-export function sliderBandSplit(v) { bandSplit = v }
-export function sliderBandSoftness(v) { bandSoftness = v * 0.2 }
-export function sliderTiltAmount(v) { tiltAmount = v }
-export function sliderCenterBlue(v) { centerBlue = v >= 0.5 ? 1 : 0 }
+function sampleLightningAtX(x) {
+  var v = 0
+  for (var i = 0; i < strikeCount; i++) {
+    var strike = sampleStrike(seriesAgeMs - strikeTimes[i], strikeGains[i])
+    if (strike <= 0) continue
 
-export function sliderSpeed(v) { speed = v * 3 }
-export function sliderBlinkHz(v) { blinkHz = v * 8 }
-export function sliderStrobeStyle(v) { strobeStyle = floor(v * 3.999) }
-export function sliderStrobeHz(v) { strobeHz = 1 + v * 19 }
-export function sliderStrobeDuty(v) { strobeDuty = 0.1 + v * 0.8 }
-export function sliderStrobeInPow(v) { strobeInPow = 0.5 + v * 4.5 }
-export function sliderStrobeOutPow(v) { strobeOutPow = 0.5 + v * 4.5 }
-
-export function sliderMotionBoost(v) { motionBoost = v * 2 }
-export function sliderMotionScale(v) { motionScale = 0.5 + v * 4.5 }
-
-function renderCore(x, y, z) {
-  var height = x * nx + y * ny + z * nz
-  var split = bandSplit * nz
-
-  var t = 0
-  if (bandSoftness > 0) {
-    t = smoothstep(split - bandSoftness, split + bandSoftness, height)
-    if (centerBlue && height >= split) t = 1
-  } else if (height > split || (centerBlue && height == split)) {
-    t = 1
+    var dist = abs(x - strikeCenters[i])
+    var profile = 0.88 + 0.12 * exp(-pow(dist / strikeWidths[i], 2))
+    v = max(v, strike * profile)
   }
 
-  var r = lerp(yellowR, blueR, t)
-  var g = lerp(yellowG, blueG, t)
-  var b = lerp(yellowB, blueB, t)
-
-  var blink = 1
-  if (blinkHz > 0) {
-    if (((elapsed * blinkHz) % 1) >= 0.5) blink = 0
-  }
-
-  var strobe = 1
-  if (strobeStyle > 0 && strobeHz > 0) {
-    strobe = strobeEnvelope((elapsed * strobeHz) % 1, strobeStyle)
-  }
-
-  var envelope = clamp01(blink * strobe * (1 + motion * motionBoost))
-  rgb(r * envelope, g * envelope, b * envelope)
+  return clamp01(v)
 }
 
 export function beforeRender(delta) {
-  elapsed += (delta / 1000) * speed
+  gapTimerMs += delta
+  seriesAgeMs += delta
 
-  motion = 0
-  var ax = 0
-  var ay = 0
-  var az = 1
-
-  if (hasSensor() && accelerometer) {
-    ax = accelerometer[0]
-    ay = accelerometer[1]
-    az = accelerometer[2]
-    var mag = sqrt(ax * ax + ay * ay + az * az)
-    motion = clamp01(abs(mag - 1) * motionScale)
+  while (gapTimerMs >= nextGapMs) {
+    gapTimerMs -= nextGapMs
+    seriesAgeMs = -blackoutLeadMs
+    cycleId += 1
+    scheduleLightningSeries(cycleId)
+    nextGapMs = sampleGapMs(cycleId)
   }
-
-  // Build a mostly-up normal, tilted by gravity direction.
-  var tx = ax * tiltAmount
-  var ty = ay * tiltAmount
-  var tz = (1 - tiltAmount) + az * tiltAmount
-  normalize3(tx, ty, tz)
 }
 
-// 1D fallback for setups without map coordinates
+function renderCore(height, pos) {
+  var isBlue = height > bandSplit || (centerBlue && height == bandSplit)
+  var active = seriesAgeMs >= -blackoutLeadMs && seriesAgeMs <= seriesDurationMs + restoreMs
+  var level = brightness
+
+  if (active) {
+    var lightning = sampleLightningAtX(pos)
+    var restore = 0
+
+    if (seriesAgeMs < 0) {
+      var blackoutT = clamp01((seriesAgeMs + blackoutLeadMs) / blackoutFadeMs)
+      level = brightness * (1 - blackoutT)
+    } else {
+      level = lightning * lightningStrength
+    }
+
+    if (seriesAgeMs > seriesDurationMs) {
+      var t = (seriesAgeMs - seriesDurationMs) / restoreMs
+      restore = brightness * clamp01(t)
+      level = restore
+    }
+  }
+
+  if (isBlue) {
+    rgb(blueR * level, blueG * level, blueB * level)
+  } else {
+    rgb(yellowR * level, yellowG * level, yellowB * level)
+  }
+}
+
+// 1D fallback for setups without map coordinates.
 export function render(index) {
   var x = (index + 0.5) / pixelCount
-  renderCore(x, 0, 0)
+  renderCore(x, x)
 }
 
 export function render2D(index, x, y) {
-  renderCore(x, y, 0)
+  renderCore(y, x)
 }
 
 export function render3D(index, x, y, z) {
-  renderCore(x, y, z)
+  renderCore(z, x)
 }
+
+initLightningArrays()
+scheduleLightningSeries(cycleId)
+nextGapMs = sampleGapMs(cycleId)

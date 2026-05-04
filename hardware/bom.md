@@ -10,7 +10,7 @@
 | JST Connectors | 2 | [Part #] | For battery connection | minor | [Supplier/Vendor] |
 | Wire | [Length] | [Gauge] | [Type] | | [Supplier/Vendor] |
 | Heat Shrink | [Length] | [Size] | Various sizes | minor | [Supplier/Vendor] |
-| Button | X | Y | X | minor | [Supplier/Vendor] |
+| On/off push button switch | 1 | JIA Teng KAN-28 | Self-lock micro push button switch, flat 2-pin, 1.5A 250V, 18 x 12 mm | minor | Amazon: 30 Pack Self-Lock Micro Push Button Switch, used inline on battery positive lead |
 
 ## Mechanical/Hardware
 
@@ -41,9 +41,9 @@
 ## Notes
 
 - [Any special ordering considerations]
+- Switch reference listing: https://www.amazon.com/dp/B0BZHZDBBY?ref=ppx_yo2ov_dt_b_fed_asin_title
 - [Minimum order quantities]
 - [Lead times]
 - [Alternative parts]
-
 
 

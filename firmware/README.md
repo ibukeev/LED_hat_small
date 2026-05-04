@@ -11,7 +11,9 @@ firmware/
 ├── README.md           # This file
 ├── patterns/           # Pattern files (.pe)
 │   ├── techno/         # Underground/club patterns
-│   │   └── tunnel-scanner.pe
+│   │   ├── tunnel-scanner.pe
+│   │   └── non-reactive/
+│   │       └── club-lights-after-hours.pe
 │   ├── burning-man/    # Playa-specific concepts
 │   ├── general/        # Non-theme-specific patterns
 │   │   ├── aurora.pe
@@ -57,6 +59,17 @@ firmware/
 - Minimal controls for output level, hold, drop, and color
 - Intended as the first live-validation target before adding more visual complexity
 
+### Club Lights After Hours (`patterns/techno/non-reactive/club-lights-after-hours.pe`)
+- Minimal strobe with alternating active and blackout phases
+- Flash interval and hold use number inputs; hard/soft drop toggle remains exposed
+- Each flashing block picks one restrained palette color from a fixed minimal set
+- Blackouts end with a multi-strike lightning series in the upcoming phase color
+
+### Lightning Study (`patterns/techno/non-reactive/lightning-study.pe`)
+- Dedicated lightning-strike test pattern for developing strong blackout-style flashes separately
+- Repeats an irregular three-hit strike cluster every configurable number of seconds
+- Exposes a numeric strike interval control and a color picker
+
 ### Fixed BPM Flash Test (`patterns/techno/fixed-bpm-flash-test.pe`)
 - Detector-free flash pattern for timing and envelope testing
 - Configurable BPM, beat division, release, color, and output level
@@ -73,9 +86,9 @@ firmware/
 - Adjustable wave parameters
 
 ### Ukrainian Flag (`patterns/general/ukrainian-flag.pe`)
-- Static Ukrainian flag (blue over yellow)
-- Optional blink and strobe modes
-- Tilt and motion reactive via Sensor Expansion Board accelerometer
+- Ukrainian flag layout (blue over yellow) with the odd center row resolving to blue
+- Random 5-10 minute lightning-style strike series
+- Lightning is brightness-only: events fade into a 5-second dark period, strike at full amplitude in the same Ukrainian blue/yellow, then restore to the static baseline
 
 ## Pattern Development
 

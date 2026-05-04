@@ -25,6 +25,13 @@ When adding new schematics:
 3. Add notes/annotations for clarity
 4. Update this README with description
 
+## Current Files
+
+- `on-off-button-installed.jpg`
+  - Photo of the installed inline power switch in the hat wiring.
+  - Shows the self-locking 2-pin pushbutton inserted in series with the positive power lead.
+  - Reference part: JIA Teng KAN-28 self-lock micro push button switch, 1.5A 250V, 18 x 12 mm.
+
 ## Schematic Types
 
 ### Circuit Diagrams
@@ -44,6 +51,5 @@ When adding new schematics:
 - Physical dimensions
 - Mounting locations
 - Clearance requirements
-
 
 
