@@ -89,6 +89,7 @@ firmware/
 - Ukrainian flag layout (blue over yellow) with the odd center row resolving to blue
 - Random 5-10 minute lightning-style strike series
 - Lightning is brightness-only: events fade into a 5-second dark period, strike at full amplitude in the same Ukrainian blue/yellow, then restore to the static baseline
+- Exposes `Min Inter Strike Interval Sec` and `Max Inter Strike Interval Sec` timing controls
 
 ## Pattern Development
 

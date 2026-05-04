@@ -48,12 +48,12 @@ export function sliderLightningStrength(v) {
   lightningStrength = v
 }
 
-export function inputNumberMinGapSec(v) {
+export function inputNumberMinInterStrikeIntervalSec(v) {
   minGapMs = max(1, v) * 1000
   if (maxGapMs < minGapMs) maxGapMs = minGapMs
 }
 
-export function inputNumberMaxGapSec(v) {
+export function inputNumberMaxInterStrikeIntervalSec(v) {
   maxGapMs = max(1, v) * 1000
   if (minGapMs > maxGapMs) minGapMs = maxGapMs
 }
