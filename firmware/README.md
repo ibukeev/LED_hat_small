@@ -61,9 +61,10 @@ firmware/
 
 ### Club Lights After Hours (`patterns/techno/non-reactive/club-lights-after-hours.pe`)
 - Minimal strobe with alternating active and blackout phases
+- Active blinking phase averages 2 minutes with about +/-20% randomization
 - Flash interval and hold use number inputs; hard/soft drop toggle remains exposed
-- Each flashing block picks one restrained palette color from a fixed minimal set
-- Blackouts end with a multi-strike lightning series in the upcoming phase color
+- Each flashing block picks one of four restrained palette colors using the top-level `paletteProbabilities` array
+- Blackouts end with a multi-strike lightning series only when the next flashing block is the cold blue palette color
 
 ### Lightning Study (`patterns/techno/non-reactive/lightning-study.pe`)
 - Dedicated lightning-strike test pattern for developing strong blackout-style flashes separately

@@ -64,6 +64,12 @@ Project-specific memory and conventions for `LED_hat_small`.
   - Minimal UI controls for live use.
   - `Energy` slider acts as macro sensitivity control.
 
+## Club Lights After Hours Conventions
+- File: `firmware/patterns/techno/non-reactive/club-lights-after-hours.pe`
+- Palette probabilities are configured near the top as `paletteProbabilities` in deep red, red-orange, ember orange, cold electric blue order.
+- The next flashing color is preselected when entering blackout and carried forward as `pendingColorIndex`.
+- Lightning should be scheduled from that pending color, and every cold-blue flashing block after startup should be preceded by a lightning series.
+
 ## Audio-Reactive Control Conventions
 - When separating audio-reactive controls, prefer distinct meanings:
   - `Input Gain`: scales incoming audio influence before event detection.

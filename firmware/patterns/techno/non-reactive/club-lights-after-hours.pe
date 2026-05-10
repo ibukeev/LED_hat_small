@@ -7,8 +7,12 @@ var flashMs = 2500
 var holdMs = 200
 var tailMs = 620
 var softDrop = false
-var flashPhaseAvgMs = 4000
+var flashPhaseAvgMs = 120000
 var blackoutPhaseAvgMs = 7000
+
+// Palette probability order: deep red, red-orange, ember orange, cold electric blue.
+var paletteProbabilities = [0.25, 0.25, 0.25, 0.25]
+
 var colorHue = 0.00
 var colorSat = 1.00
 var colorValue = 1.00
@@ -30,6 +34,7 @@ var phaseLengthMs = 10000
 var phaseIsDark = false
 var phaseSeed = 0
 var nextColorIndex = 0
+var pendingColorIndex = 0
 var lightningStartsAtMs = 0
 var lightningAgeMs = 99999
 var lightningDurationMs = 900
@@ -59,6 +64,20 @@ function hash1(x) {
 }
 
 function pickPaletteIndex(seed) {
+  var p0 = max(0, paletteProbabilities[0])
+  var p1 = max(0, paletteProbabilities[1])
+  var p2 = max(0, paletteProbabilities[2])
+  var p3 = max(0, paletteProbabilities[3])
+  var total = p0 + p1 + p2 + p3
+
+  if (total <= 0) return 3
+
+  var pick = hash1(seed) * total
+  if (pick < p0) return 0
+  pick -= p0
+  if (pick < p1) return 1
+  pick -= p1
+  if (pick < p2) return 2
   return 3
 }
 
@@ -91,9 +110,14 @@ function setSeriesColor(seed) {
   setColorFromPick(pick)
 }
 
+function setSeriesColorFromPick(pick) {
+  setColorFromPick(pick)
+}
+
 function setUpcomingColor(seed) {
   var pick = pickPaletteIndex(seed)
   nextColorIndex = pick
+  pendingColorIndex = pick
 
   if (pick == 0) {
     nextColorHue = 0.00
@@ -273,7 +297,7 @@ function pickNextPhase() {
   } else {
     // Flashing windows vary, but less than pure min/max tuning would.
     phaseLengthMs = samplePhaseLength(flashPhaseAvgMs, phaseSeed + 0.53, 0.20)
-    setSeriesColor(phaseSeed)
+    setSeriesColorFromPick(pendingColorIndex)
     elapsedMs = 0
     pulseAgeMs = 0
     pulse = 1
@@ -364,7 +388,7 @@ export function inputNumberHoldMs(v) {
 }
 
 export function inputNumberFlashPhaseAvgSec(v) {
-  flashPhaseAvgMs = clamp(v, 5, 120) * 1000
+  flashPhaseAvgMs = clamp(v, 15, 300) * 1000
 }
 
 export function inputNumberBlackoutAvgSec(v) {
