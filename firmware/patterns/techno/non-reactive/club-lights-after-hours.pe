@@ -1,24 +1,70 @@
 // Pattern: Club Lights After Hours
 // Description: Minimal blue strobe with blackout-end lightning using the approved study-pattern family.
-// Version: 1.7
+// Version: 1.8
 
+// ============================================================================
+// Pattern controls
+// ============================================================================
+
+// Overall brightness trim for this pattern. Keep below 1.0 so the pattern can
+// sit comfortably under the Pixelblaze global brightness limit.
 var outputLevel = 0.82
-var flashMs = 2500
-var holdMs = 200
-var tailMs = 620
+
+// Flash rhythm. 1000 ms is a slower half-time pulse against 120 BPM music.
+// Hold is the full-bright portion; tail is the decay.
+var flashMs = 1000
+var holdMs = 150
+var tailMs = 465
+
+// Soft drop hangs brighter longer and then falls late. Hard drop decays earlier
+// and feels more percussive.
 var softDrop = false
-var flashPhaseAvgMs = 120000
-var blackoutPhaseAvgMs = 7000
 
-// Palette probability order: deep red, red-orange, ember orange, cold electric blue.
+// Long-form structure. These timers use seconds because Pixelblaze numeric
+// range is too small for multi-minute millisecond values. Flashing blocks
+// average four minutes, with +/-20% jitter. Blackouts average twenty seconds,
+// with +/-22% jitter so darkness feels organic but still deliberate.
+var flashPhaseAvgSec = 240
+var blackoutPhaseAvgSec = 20
+var flashPhaseJitter = 0.20
+var blackoutPhaseJitter = 0.22
+
+// Hold input derives tail from this multiplier to preserve the current envelope
+// shape when the hold duration is changed from the Pixelblaze UI.
+var tailFromHold = 3.1
+var minTailMs = 20
+
+// Pixelblaze UI control limits. These keep live edits inside useful ranges.
+var flashIntervalMinMs = 300
+var flashIntervalMaxMs = 1500
+var holdMinMs = 0
+var holdMaxMs = 300
+var flashPhaseMinSec = 15
+var flashPhaseMaxSec = 300
+var blackoutMinSec = 2
+var blackoutMaxSec = 60
+
+// Palette probability order: deep red, red-orange, ember orange, cold electric
+// blue. Lightning is scheduled only before cold-blue flashing blocks.
 var paletteProbabilities = [0.25, 0.25, 0.25, 0.25]
+var paletteHues = [0.00, 0.025, 0.038, 0.58]
+var paletteSats = [1.00, 1.00, 1.00, 0.72]
+var paletteValues = [0.95, 1.00, 0.98, 0.90]
 
+// Active flashing colors. These are HSV values selected by palette index:
+// 0 deep red, 1 red-orange, 2 ember orange, 3 cold electric blue.
 var colorHue = 0.00
 var colorSat = 1.00
 var colorValue = 1.00
+
+// Upcoming color cache. The blackout phase preselects the next flashing color
+// so it can decide whether a lightning series should lead into that block.
 var nextColorHue = 0.00
 var nextColorSat = 1.00
 var nextColorValue = 1.00
+
+// Lightning color. The strike is nearly white-blue; the glow is even less
+// saturated. These are intentionally independent from the active flash color.
 var lightningStrikeHue = 0.00
 var lightningStrikeSat = 0.80
 var lightningStrikeValue = 1.00
@@ -26,11 +72,43 @@ var lightningGlowHue = 0.00
 var lightningGlowSat = 0.42
 var lightningGlowValue = 0.92
 
+// Lightning timing and spatial style. Each cold-blue transition gets 7-9
+// authored strike slots with randomized series length, ending style, and spread.
+var lightningAuthoredStrikeSlots = 9
+var lightningMinStrikeCount = 7
+var lightningBaseDurationCleanMs = 620
+var lightningBaseDurationLongMs = 720
+var lightningSeriesDurationRangeMs = 280
+var lightningOpeningHoldMs = 18
+var lightningDefaultHoldMs = 22
+var lightningCleanTailMs = 46
+var lightningLongTailMs = 62
+var lightningMinSpatialSpread = 0.08
+var lightningSpatialSpreadRange = 0.84
+var lightningMinSeriesLength = 0.50
+var lightningSeriesLengthRange = 0.50
+var lightningCleanEndingChance = 0.50
+
+// Lightning render texture. Lower cloud values make blackouts cleaner; higher
+// texture values make the strike body feel less uniform around the hat.
+var lightningRumbleLevel = 0.012
+var lightningCloudLevel = 0.012
+var lightningStrikeTextureBase = 0.84
+var lightningStrikeTextureDepth = 0.16
+var lightningCloudTextureBase = 0.82
+var lightningCloudTextureDepth = 0.18
+var lightningGlowScale = 0.78
+var lightningStrikeThreshold = 0.06
+
+// ============================================================================
+// Runtime state
+// ============================================================================
+
 var elapsedMs = 0
 var pulseAgeMs = 99999
 var pulse = 0
-var phaseMs = 0
-var phaseLengthMs = 10000
+var phaseSec = 0
+var phaseLengthSec = 120
 var phaseIsDark = false
 var phaseSeed = 0
 var nextColorIndex = 0
@@ -45,8 +123,6 @@ var lightningDenseMiddle = true
 var lightningCleanEnding = true
 var lightningSpatialSpread = 0.55
 var lightningSeriesLength = 0.75
-var lightningAuthoredStrikeSlots = 9
-var lightningMinStrikeCount = 7
 var lightningStrikeCount = 0
 var lightningStrikeTimes = array(9)
 var lightningStrikeGains = array(9)
@@ -82,27 +158,9 @@ function pickPaletteIndex(seed) {
 }
 
 function setColorFromPick(pick) {
-  if (pick == 0) {
-    // deep red
-    colorHue = 0.00
-    colorSat = 1.00
-    colorValue = 0.95
-  } else if (pick == 1) {
-    // red-orange
-    colorHue = 0.025
-    colorSat = 1.00
-    colorValue = 1.00
-  } else if (pick == 2) {
-    // ember orange
-    colorHue = 0.038
-    colorSat = 1.00
-    colorValue = 0.98
-  } else {
-    // cold electric blue
-    colorHue = 0.58
-    colorSat = 0.72
-    colorValue = 0.90
-  }
+  colorHue = paletteHues[pick]
+  colorSat = paletteSats[pick]
+  colorValue = paletteValues[pick]
 }
 
 function setSeriesColor(seed) {
@@ -118,24 +176,9 @@ function setUpcomingColor(seed) {
   var pick = pickPaletteIndex(seed)
   nextColorIndex = pick
   pendingColorIndex = pick
-
-  if (pick == 0) {
-    nextColorHue = 0.00
-    nextColorSat = 1.00
-    nextColorValue = 0.95
-  } else if (pick == 1) {
-    nextColorHue = 0.025
-    nextColorSat = 1.00
-    nextColorValue = 1.00
-  } else if (pick == 2) {
-    nextColorHue = 0.038
-    nextColorSat = 1.00
-    nextColorValue = 0.98
-  } else {
-    nextColorHue = 0.58
-    nextColorSat = 0.72
-    nextColorValue = 0.90
-  }
+  nextColorHue = paletteHues[pick]
+  nextColorSat = paletteSats[pick]
+  nextColorValue = paletteValues[pick]
 }
 
 function setLightningColorsFromUpcoming() {
@@ -149,9 +192,9 @@ function setLightningColorsFromUpcoming() {
   lightningGlowValue = 0.94
 }
 
-function samplePhaseLength(avgMs, seed, jitterFrac) {
-  var offset = (hash1(seed) * 2 - 1) * avgMs * jitterFrac
-  return max(1000, avgMs + offset)
+function samplePhaseLengthSec(avgSec, seed, jitterFrac) {
+  var offset = (hash1(seed) * 2 - 1) * avgSec * jitterFrac
+  return max(1, avgSec + offset)
 }
 
 function initLightningArrays() {
@@ -181,16 +224,16 @@ function scheduleLightningSeries(seed) {
   lightningSeriesLength = clamp01(lightningSeriesLength)
   lightningViolentOpening = true
   lightningDenseMiddle = true
-  lightningCleanEnding = hash1(seed + 0.13) < 0.5
-  lightningSpatialSpread = 0.08 + 0.84 * hash1(seed + 0.41)
-  lightningSeriesLength = 0.5 + 0.5 * hash1(seed + 0.67)
+  lightningCleanEnding = hash1(seed + 0.13) < lightningCleanEndingChance
+  lightningSpatialSpread = lightningMinSpatialSpread + lightningSpatialSpreadRange * hash1(seed + 0.41)
+  lightningSeriesLength = lightningMinSeriesLength + lightningSeriesLengthRange * hash1(seed + 0.67)
 
   lightningStrikeCount = lightningMinStrikeCount + floor(lightningSeriesLength * (lightningAuthoredStrikeSlots - lightningMinStrikeCount + 0.999))
   if (lightningStrikeCount > lightningAuthoredStrikeSlots) lightningStrikeCount = lightningAuthoredStrikeSlots
 
-  lightningHoldMs = lightningViolentOpening ? 18 : 22
-  lightningTailMs = lightningCleanEnding ? 46 : 62
-  lightningDurationMs = (lightningCleanEnding ? 620 : 720) + lightningSeriesLength * 280
+  lightningHoldMs = lightningViolentOpening ? lightningOpeningHoldMs : lightningDefaultHoldMs
+  lightningTailMs = lightningCleanEnding ? lightningCleanTailMs : lightningLongTailMs
+  lightningDurationMs = (lightningCleanEnding ? lightningBaseDurationCleanMs : lightningBaseDurationLongMs) + lightningSeriesLength * lightningSeriesDurationRangeMs
 
   lightningStrikeTimes[0] = 0
   lightningStrikeTimes[1] = lightningViolentOpening ? 38 : 58
@@ -246,7 +289,7 @@ function sampleLightningGlobal() {
   if (lightningAgeMs >= 0 && lightningAgeMs <= lightningDurationMs) {
     var t = lightningAgeMs / lightningDurationMs
     var cutoff = 1 - pow(t, 7.0)
-    var rumble = cutoff * 0.012
+    var rumble = cutoff * lightningRumbleLevel
     v = max(v, rumble)
   }
 
@@ -267,8 +310,8 @@ function sampleLightningAtX(x) {
   if (lightningAgeMs >= 0 && lightningAgeMs <= lightningDurationMs) {
     var t = lightningAgeMs / lightningDurationMs
     var cutoff = 1 - pow(t, 7.5)
-    var cloudTexture = 0.82 + 0.18 * (sin(x * 1.7 * PI * 2) * 0.5 + 0.5)
-    var cloud = cutoff * 0.012 * cloudTexture
+    var cloudTexture = lightningCloudTextureBase + lightningCloudTextureDepth * (sin(x * 1.7 * PI * 2) * 0.5 + 0.5)
+    var cloud = cutoff * lightningCloudLevel * cloudTexture
     v = max(v, cloud)
   }
 
@@ -281,12 +324,12 @@ function pickNextPhase() {
 
   if (phaseIsDark) {
     // Internal blackout jitter stays moderate so darkness feels deliberate.
-    phaseLengthMs = samplePhaseLength(blackoutPhaseAvgMs, phaseSeed + 0.17, 0.22)
+    phaseLengthSec = samplePhaseLengthSec(blackoutPhaseAvgSec, phaseSeed + 0.17, blackoutPhaseJitter)
     setUpcomingColor(phaseSeed + 1)
     if (nextColorIndex == 3) {
       setLightningColorsFromUpcoming()
       scheduleLightningSeries(phaseSeed + 11)
-      lightningStartsAtMs = max(0, phaseLengthMs - lightningDurationMs)
+      lightningStartsAtMs = max(0, phaseLengthSec * 1000 - lightningDurationMs)
       lightningAgeMs = -lightningStartsAtMs
     } else {
       lightningStartsAtMs = 999999
@@ -296,24 +339,24 @@ function pickNextPhase() {
     pulseAgeMs = 99999
   } else {
     // Flashing windows vary, but less than pure min/max tuning would.
-    phaseLengthMs = samplePhaseLength(flashPhaseAvgMs, phaseSeed + 0.53, 0.20)
+    phaseLengthSec = samplePhaseLengthSec(flashPhaseAvgSec, phaseSeed + 0.53, flashPhaseJitter)
     setSeriesColorFromPick(pendingColorIndex)
     elapsedMs = 0
     pulseAgeMs = 0
     pulse = 1
   }
 
-  phaseMs = 0
+  phaseSec = 0
 }
 
 export function beforeRender(delta) {
-  phaseMs += delta
-  if (phaseIsDark && phaseMs >= phaseLengthMs) {
+  phaseSec += delta / 1000
+  if (phaseIsDark && phaseSec >= phaseLengthSec) {
     pickNextPhase()
   }
 
   if (phaseIsDark) {
-    lightningAgeMs = phaseMs - lightningStartsAtMs
+    lightningAgeMs = phaseSec * 1000 - lightningStartsAtMs
     pulse = 0
     return
   }
@@ -342,7 +385,7 @@ export function beforeRender(delta) {
   }
 
   // Let the current flash finish before transitioning into blackout.
-  if (!phaseIsDark && phaseMs >= phaseLengthMs && pulseAgeMs > holdMs + tailMs) {
+  if (!phaseIsDark && phaseSec >= phaseLengthSec && pulseAgeMs > holdMs + tailMs) {
     pickNextPhase()
   }
 }
@@ -357,13 +400,13 @@ export function render(index) {
     var x = (index + 0.5) / pixelCount
     var strike = sampleLightningAtX(x)
     var global = sampleLightningGlobal()
-    var texture = 0.84 + 0.16 * (sin((x * 3.1 + phaseSeed * 0.27) * PI * 2) * 0.5 + 0.5)
+    var texture = lightningStrikeTextureBase + lightningStrikeTextureDepth * (sin((x * 3.1 + phaseSeed * 0.27) * PI * 2) * 0.5 + 0.5)
     var strikeV = clamp01(strike * texture * lightningStrikeValue)
-    var glowV = clamp01(global * 0.78 * texture * lightningGlowValue)
+    var glowV = clamp01(global * lightningGlowScale * texture * lightningGlowValue)
 
     // Keep active lightning body in the fixed electrical lightning color.
     // Only use the neutral glow where there is no stronger strike present.
-    if (strikeV > 0.06) hsv(lightningStrikeHue, lightningStrikeSat, strikeV)
+    if (strikeV > lightningStrikeThreshold) hsv(lightningStrikeHue, lightningStrikeSat, strikeV)
     else hsv(lightningGlowHue, lightningGlowSat, glowV)
     return
   }
@@ -378,21 +421,21 @@ export function render3D(index, x, y, z) {
   render(index)
 }
 
-export function inputNumberFlashIntervalMs(v) {
-  flashMs = clamp(v, 300, 4000)
+export function sliderFlashIntervalMs(v) {
+  flashMs = flashIntervalMinMs + v * (flashIntervalMaxMs - flashIntervalMinMs)
 }
 
-export function inputNumberHoldMs(v) {
-  holdMs = clamp(v, 0, 300)
-  tailMs = max(20, holdMs * 3.1)
+export function sliderHoldMs(v) {
+  holdMs = holdMinMs + v * (holdMaxMs - holdMinMs)
+  tailMs = max(minTailMs, holdMs * tailFromHold)
 }
 
-export function inputNumberFlashPhaseAvgSec(v) {
-  flashPhaseAvgMs = clamp(v, 15, 300) * 1000
+export function sliderFlashPhaseAvgSec(v) {
+  flashPhaseAvgSec = flashPhaseMinSec + v * (flashPhaseMaxSec - flashPhaseMinSec)
 }
 
-export function inputNumberBlackoutAvgSec(v) {
-  blackoutPhaseAvgMs = clamp(v, 2, 60) * 1000
+export function sliderBlackoutAvgSec(v) {
+  blackoutPhaseAvgSec = blackoutMinSec + v * (blackoutMaxSec - blackoutMinSec)
 }
 
 export function toggleSoftDrop(isEnabled) {
@@ -400,7 +443,7 @@ export function toggleSoftDrop(isEnabled) {
 }
 
 phaseIsDark = false
-phaseLengthMs = samplePhaseLength(flashPhaseAvgMs, 0.53, 0.20)
+phaseLengthSec = samplePhaseLengthSec(flashPhaseAvgSec, 0.53, flashPhaseJitter)
 initLightningArrays()
 setSeriesColor(0)
 setUpcomingColor(1)

@@ -61,8 +61,9 @@ firmware/
 
 ### Club Lights After Hours (`patterns/techno/non-reactive/club-lights-after-hours.pe`)
 - Minimal strobe with alternating active and blackout phases
-- Active blinking phase averages 2 minutes with about +/-20% randomization
-- Flash interval and hold use number inputs; hard/soft drop toggle remains exposed
+- Active blinking phase averages 4 minutes with about +/-20% randomization
+- Default blink interval is 1000 ms, giving a slower half-time feel against 120 BPM house and techno
+- Flash interval, hold, flashing phase length, and blackout length use sliders; hard/soft drop toggle remains exposed
 - Each flashing block picks one of four restrained palette colors using the top-level `paletteProbabilities` array
 - Blackouts end with a multi-strike lightning series only when the next flashing block is the cold blue palette color
 
